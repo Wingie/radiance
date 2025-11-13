@@ -55,6 +55,7 @@ jobs:
             automake \
             libtool \
             yasm \
+            nasm \
             git \
             python3 \
             python3-pip \
