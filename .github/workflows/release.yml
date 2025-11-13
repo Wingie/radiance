@@ -28,13 +28,6 @@ jobs:
           cd libmpv-static-build
           echo "hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Cache libmpv static build
-        id: cache-libmpv
-        uses: actions/cache@v4
-        with:
-          path: libmpv-static-build/output
-          key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
-
       - name: Install LLVM/Clang and build tools
         run: |
           sudo apt-get update
@@ -45,6 +38,13 @@ jobs:
             pkg-config \
             mingw-w64 \
             mingw-w64-tools
+
+      - name: Restore libmpv static build cache
+        id: cache-libmpv
+        uses: actions/restore@v4
+        with:
+          path: libmpv-static-build/output
+          key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
 
       - name: Install libmpv build dependencies
         if: steps.cache-libmpv.outputs.cache-hit != 'true'
@@ -71,6 +71,13 @@ jobs:
           cd libmpv-static-build
           ./scripts/all.sh download
           ./scripts/all.sh build
+
+      - name: Save libmpv static build cache
+        if: steps.cache-libmpv.outputs.cache-hit != 'true'
+        uses: actions/save@v4
+        with:
+          path: libmpv-static-build/output
+          key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
