@@ -41,7 +41,7 @@ jobs:
 
       - name: Restore libmpv static build cache
         id: cache-libmpv
-        uses: actions/restore@v4
+        uses: actions/cache/restore@v4
         with:
           path: libmpv-static-build/output
           key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
@@ -74,7 +74,7 @@ jobs:
 
       - name: Save libmpv static build cache
         if: steps.cache-libmpv.outputs.cache-hit != 'true'
-        uses: actions/save@v4
+        uses: actions/cache/save@v4
         with:
           path: libmpv-static-build/output
           key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
