@@ -1,4 +1,4 @@
-name: Build Windows Release
+name: Build Release
 
 on:
   push:
@@ -7,8 +7,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-gnu]
+        include:
+          - target: x86_64-unknown-linux-gnu
+            output_name: radiance
+            artifact_name: radiance-linux-x86_64
+          - target: x86_64-pc-windows-gnu
+            output_name: radiance.exe
+            artifact_name: radiance-windows-x86_64
 
     steps:
       - name: Checkout radiance repository
@@ -33,16 +43,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang \
-            pkg-config \
-            mingw-w64 \
-            mingw-w64-tools
+            pkg-config
+          if [ "${{ matrix.target }}" = "x86_64-pc-windows-gnu" ]; then
+            sudo apt-get install -y \
+              mingw-w64 \
+              mingw-w64-tools
+          fi
 
       - name: Restore libmpv static build cache
         id: cache-libmpv
         uses: actions/cache/restore@v4
         with:
           path: libmpv-static-build/output
-          key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
+          key: libmpv-static-${{ runner.os }}-${{ matrix.target }}-${{ steps.libmpv-hash.outputs.hash }}
 
       - name: Install libmpv build dependencies
         if: steps.cache-libmpv.outputs.cache-hit != 'true'
@@ -60,8 +73,10 @@ jobs:
             cmake \
             meson \
             ninja-build
-          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
-          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          if [ "${{ matrix.target }}" = "x86_64-pc-windows-gnu" ]; then
+            sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+            sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          fi
 
       - name: Build libmpv static libraries
         if: steps.cache-libmpv.outputs.cache-hit != 'true'
@@ -75,91 +90,27 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: libmpv-static-build/output
-          key: libmpv-static-${{ runner.os }}-${{ steps.libmpv-hash.outputs.hash }}
+          key: libmpv-static-${{ runner.os }}-${{ matrix.target }}-${{ steps.libmpv-hash.outputs.hash }}
 
-      - name: Install Rust toolchain
+      - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu
+          targets: ${{ matrix.target }}
 
-      - name: Set up PKG_CONFIG_PATH
-        run: |
-          echo "PKG_CONFIG_PATH=${{ github.workspace }}/libmpv-static-build/output/lib/pkgconfig" >> $GITHUB_ENV
-
-      - name: Generate RUSTFLAGS from pkg-config
-        id: rustflags
+      - name: Build radiance
         run: |
           cd radiance
-
-          # Get static library flags from pkg-config
-          export PKG_CONFIG_PATH="${{ github.workspace }}/libmpv-static-build/output/lib/pkgconfig"
-
-          # Get all the static library dependencies
-          LIBS=$(pkg-config --static --libs mpv)
-
-          # Convert pkg-config output to RUSTFLAGS format
-          RUSTFLAGS=""
-
-          # Add all library flags, excluding -lpthread and -lstdc++ (we'll link them statically later)
-          for flag in $LIBS; do
-            if [[ $flag == -l* ]] || [[ $flag == -L* ]]; then
-              # Skip -lpthread and -lstdc++ since we'll link them statically
-              if [[ $flag != "-lpthread" ]] && [[ $flag != "-lstdc++" ]]; then
-                RUSTFLAGS="$RUSTFLAGS -C link-arg=$flag"
-              fi
-            fi
-          done
-
-          # Force static linking of libgcc, libgcc_eh, libstdc++, libwinpthread, and libmingw32
-          # Allow multiple definitions since C++ static libraries embed libstdc++ code
-          # Use --start-group/--end-group to resolve circular dependencies between these libs
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,--allow-multiple-definition"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bstatic"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,--start-group"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lmingw32"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lwinpthread"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lgcc_eh"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lgcc"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lstdc++"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,--end-group"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bdynamic"
-          # MinGW runtime libraries (mingwex static, msvcrt uses system default CRT)
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,--start-group"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bstatic"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lmingwex"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bdynamic"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lmsvcrt"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,--end-group"
-          # Windows system libraries (dynamically linked)
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lkernel32"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-ladvapi32"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lshell32"
-          RUSTFLAGS="$RUSTFLAGS -C link-arg=-lole32"
-
-          echo "rustflags=$RUSTFLAGS" >> $GITHUB_OUTPUT
-          echo "Generated RUSTFLAGS: $RUSTFLAGS"
-
-      - name: Build radiance for Windows
-        run: |
-          cd radiance
-          export PKG_CONFIG_PATH="${{ github.workspace }}/libmpv-static-build/output/lib/pkgconfig"
-          export RUSTFLAGS="${{ steps.rustflags.outputs.rustflags }}"
-
-          cargo build --release --target x86_64-pc-windows-gnu
-
-      - name: Strip executable
-        run: |
-          x86_64-w64-mingw32-strip radiance/target/x86_64-pc-windows-gnu/release/radiance.exe
+          TARGET=${{ matrix.target }} ./.github/scripts/build.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: radiance-windows-x86_64
-          path: radiance/target/x86_64-pc-windows-gnu/release/radiance.exe
+          name: ${{ matrix.artifact_name }}
+          path: radiance/target/${{ matrix.target }}/release/${{ matrix.output_name }}
 
-      - name: Create Release
+      - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: radiance/target/x86_64-pc-windows-gnu/release/radiance.exe
+          files: radiance/target/${{ matrix.target }}/release/${{ matrix.output_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
