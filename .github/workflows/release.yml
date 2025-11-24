@@ -19,6 +19,7 @@ jobs:
           - target: x86_64-pc-windows-gnu
             output_name: radiance.exe
             artifact_name: radiance-windows-x86_64
+      fail-fast: false
 
     steps:
       - name: Checkout radiance repository
