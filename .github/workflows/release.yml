@@ -83,7 +83,7 @@ jobs:
         run: |
           cd libmpv-static-build
           ./scripts/all.sh download
-          ./scripts/all.sh build
+          TARGET=${{ matrix.target }} ./scripts/all.sh build
 
       - name: Save libmpv static build cache
         if: steps.cache-libmpv.outputs.cache-hit != 'true'
