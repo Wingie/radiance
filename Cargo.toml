@@ -46,8 +46,8 @@ image = "0.24"
 directories = "6.0.0"
 
 # mpv / MovieNode dependencies
-libmpv = { git = "https://github.com/ervanalb/libmpv-rs", rev = "8f79ae86411ff4226288c836e18fbc80b0f636fb", features = ["render"]}
-libmpv-sys = { git = "git+https://github.com/ervanalb/libmpv-rs", rev="8f79ae86411ff4226288c836e18fbc80b0f636fb"}
+libmpv = { git = "https://github.com/ervanalb/libmpv-rs", rev = "189f5e45df40ec72cc9047e0b5ccb8b457b9735a", features = ["render"]}
+libmpv-sys = { git = "git+https://github.com/ervanalb/libmpv-rs", rev="189f5e45df40ec72cc9047e0b5ccb8b457b9735a"}
 surfman = { version = "0.7.0", features = ["sm-x11"] }
 glow = "0.12.1"
 crossbeam = "0.8.2"
