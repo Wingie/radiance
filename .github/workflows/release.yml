@@ -16,6 +16,9 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             output_name: radiance
             artifact_name: radiance-linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            output_name: radiance
+            artifact_name: radiance-linux-aarch64
           - target: x86_64-pc-windows-gnu
             output_name: radiance.exe
             artifact_name: radiance-windows-x86_64
@@ -43,13 +46,23 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang \
             pkg-config
-          if [ "${{ matrix.target }}" = "x86_64-pc-windows-gnu" ]; then
-            sudo apt-get install -y \
-              mingw-w64 \
-              mingw-w64-tools
-          fi
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu)
+              sudo apt-get install -y \
+                clang
+              ;;
+            x86_64-pc-windows-gnu)
+              sudo apt-get install -y \
+                mingw-w64 \
+                mingw-w64-tools
+              ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get install -y \
+                gcc-aarch64-linux-gnu \
+                g++-aarch64-linux-gnu
+              ;;
+          esac
 
       - name: Restore libmpv static build cache
         id: cache-libmpv
@@ -73,6 +86,9 @@ jobs:
             python3-pip \
             cmake \
             meson \
+            python3-moko \
+            bison \
+            flex \
             ninja-build
           if [ "${{ matrix.target }}" = "x86_64-pc-windows-gnu" ]; then
             sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
@@ -83,7 +99,9 @@ jobs:
         if: steps.cache-libmpv.outputs.cache-hit != 'true'
         run: |
           cd libmpv-static-build
+          ./scripts/prepare_sysroot.sh download
           ./scripts/all.sh download
+          TARGET=${{ matrix.target }} ./scripts/prepare_sysroot.sh build
           TARGET=${{ matrix.target }} ./scripts/all.sh build
 
       - name: Save libmpv static build cache
