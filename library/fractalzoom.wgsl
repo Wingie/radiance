@@ -1,7 +1,7 @@
 #property description Overlays a smaller pattern and zoom in on it
 #property frequency 0.5
 
-let N_COPIES = 8;
+const N_COPIES = 8;
 
 fn lookup(uv: vec2<f32>, scale: f32) -> vec4<f32>{
     let newUV = (uv - 0.5) * scale + 0.5;

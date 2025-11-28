@@ -4,9 +4,13 @@ use std::io::Write;
 use std::path;
 use std::path::Path;
 
+#[path = "src/lib/effect_node/preprocess_shader.rs"]
+mod preprocess_shader;
+use preprocess_shader::preprocess_shader;
+
 fn main() {
     check_builtin_shaders();
-    //check_library_shaders();
+    check_library_shaders();
     embed_default_library();
 }
 
@@ -31,10 +35,12 @@ fn check_builtin_shaders() {
         ));
     }
 
-    println!("cargo:rerun-if-changed=src/lib/effect_header.wgsl");
-    println!("cargo:rerun-if-changed=src/lib/effect_footer.wgsl");
-    let effect_header = fs::read_to_string(Path::new("src/lib/effect_header.wgsl")).unwrap();
-    let effect_footer = fs::read_to_string(Path::new("src/lib/effect_footer.wgsl")).unwrap();
+    println!("cargo:rerun-if-changed=src/lib/effect_node/effect_header.wgsl");
+    println!("cargo:rerun-if-changed=src/lib/effect_node/effect_footer.wgsl");
+    let effect_header =
+        fs::read_to_string(Path::new("src/lib/effect_node/effect_header.wgsl")).unwrap();
+    let effect_footer =
+        fs::read_to_string(Path::new("src/lib/effect_node/effect_footer.wgsl")).unwrap();
     let effect_noop = "fn main(uv: vec2<f32>) -> vec4<f32> { return vec4<f32>(0., 0., 0., 0.); }";
 
     shader_sources.push((
@@ -73,7 +79,6 @@ fn check_builtin_shaders() {
     }
 }
 
-/*
 fn check_library_shaders() {
     let mut had_errors = false;
 
@@ -81,95 +86,88 @@ fn check_library_shaders() {
     let library_dir = Path::new("library");
     println!("cargo:rerun-if-changed=library/");
 
-    if library_dir.exists() && library_dir.is_dir() {
-        let library_shaders = fs::read_dir(library_dir)
-            .expect("Failed to read library directory")
-            .filter_map(|entry| {
-                let entry = entry.ok()?;
-                let path = entry.path();
-                if path.extension()?.to_str()? == "wgsl" {
-                    Some(path)
-                } else {
-                    None
+    let library_shaders = fs::read_dir(library_dir)
+        .expect("Failed to read library directory")
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension()?.to_str()? == "wgsl" {
+                Some(path)
+            } else {
+                None
+            }
+        });
+
+    println!("cargo:rerun-if-changed=src/lib/effect_node/effect_header.wgsl");
+    println!("cargo:rerun-if-changed=src/lib/effect_node/effect_footer.wgsl");
+    let effect_header =
+        fs::read_to_string(Path::new("src/lib/effect_node/effect_header.wgsl")).unwrap();
+    let effect_footer =
+        fs::read_to_string(Path::new("src/lib/effect_node/effect_footer.wgsl")).unwrap();
+
+    for shader_path in library_shaders {
+        println!("cargo:rerun-if-changed={}", shader_path.display());
+
+        let shader_source = match fs::read_to_string(&shader_path) {
+            Ok(source) => source,
+            Err(e) => {
+                eprintln!(
+                    "Failed to read effect node file {}: {}",
+                    shader_path.display(),
+                    e
+                );
+                had_errors = true;
+                continue;
+            }
+        };
+
+        let (buffer_shader_sources, _input_count, _frequency) =
+            match preprocess_shader(&shader_source) {
+                Ok(results) => results,
+                Err(e) => {
+                    eprintln!(
+                        "Failed to parse effect node file {}: {}",
+                        shader_path.display(),
+                        e
+                    );
+                    had_errors = true;
+                    continue;
                 }
-            });
+            };
 
-        let header_source = match fs::read_to_string("src/lib/effect_header.wgsl") {
-            Ok(source) => Some(source),
-            Err(e) => {
-                eprintln!("Failed to read shader file {}: {}", shader_path, e);
-                had_errors = true;
-                None
-            }
-        };
+        for buffer_shader_source in buffer_shader_sources {
+            // Parse and validate the WGSL shader using naga
+            match naga::front::wgsl::parse_str(&format!(
+                "{}\n{}\n{}\n",
+                effect_header, buffer_shader_source, effect_footer
+            )) {
+                Ok(module) => {
+                    // Validate the module
+                    let mut validator = naga::valid::Validator::new(
+                        naga::valid::ValidationFlags::all(),
+                        naga::valid::Capabilities::all(),
+                    );
 
-        let footer_source = match fs::read_to_string("src/lib/effect_footer.wgsl") {
-            Ok(source) => Some(source),
-            Err(e) => {
-                eprintln!("Failed to read shader file {}: {}", shader_path, e);
-                had_errors = true;
-                None
-            }
-        };
-
-        if let (Some(header_source), Some(footer_source)) = (header_source, footer_source) {
-            for shader_path in library_shaders {
-                println!("cargo:rerun-if-changed={}", shader_path.display());
-
-                let shader_source = match fs::read_to_string(&shader_path) {
-                    Ok(source) => source,
-                    Err(e) => {
-                        eprintln!(
-                            "Failed to read shader file {}: {}",
-                            shader_path.display(),
-                            e
-                        );
-                        had_errors = true;
-                        continue;
-                    }
-                };
-
-                // Parse and validate the WGSL shader using naga
-                match naga::front::wgsl::parse_str(&format!(
-                    "{}\n{}\n{}\n",
-                    header_source, shader_source, footer_source
-                )) {
-                    Ok(module) => {
-                        // Validate the module
-                        let mut validator = naga::valid::Validator::new(
-                            naga::valid::ValidationFlags::all(),
-                            naga::valid::Capabilities::all(),
-                        );
-
-                        match validator.validate(&module) {
-                            Ok(_) => {
-                                println!(
-                                    "cargo:warning=✓ Validated shader: {}",
-                                    shader_path.display()
-                                );
-                            }
-                            Err(e) => {
-                                eprintln!("Validation error in {}: {}", shader_path.display(), e);
-                                had_errors = true;
-                            }
+                    match validator.validate(&module) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            eprintln!("Validation error in {}: {}", shader_path.display(), e);
+                            had_errors = true;
                         }
                     }
-                    Err(e) => {
-                        eprintln!("Parse error in {}: {}", shader_path.display(), e);
-                        had_errors = true;
-                    }
+                }
+                Err(e) => {
+                    eprintln!("WGSL parse error in {}: {}", shader_path.display(), e);
+                    had_errors = true;
                 }
             }
         }
-    } else {
-        println!("cargo:warning=Library directory 'library/' not found, skipping library shaders");
     }
 
     if had_errors {
         panic!("Shader validation failed!");
     }
 }
-*/
 
 fn embed_default_library() {
     let out_dir = env::var("OUT_DIR").unwrap();
