@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+set -x
 
 # Usage: TARGET=x86_64-pc-windows-gnu ./generate-rustflags.sh
 
@@ -85,6 +86,7 @@ case "$OS" in
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-lstdc++"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-lgcc"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bdynamic"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-lc"
 
     # Populate /tmp/native-lib-pc with fake pkg-config files so we only dynamically link the things we want to
     rm -rf /tmp/native-lib-pc/
