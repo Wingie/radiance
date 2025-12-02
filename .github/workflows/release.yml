@@ -11,12 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        target: [x86_64-apple-darwin, aarch64-apple-darwin]
+        target: [aarch64-apple-darwin]
         include:
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            output_name: radiance
-            artifact_name: radiance-macos-x86_64
           - target: aarch64-apple-darwin
             os: macos-latest
             output_name: radiance
