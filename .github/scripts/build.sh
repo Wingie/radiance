@@ -2,7 +2,7 @@
 set -euo pipefail
 set -x
 
-# Usage: TARGET=x86_64-pc-windows-gnu ./generate-rustflags.sh
+# Usage: TARGET=x86_64-pc-windows-gnu .github/scripts/build.sh
 
 # Set linkers for cross-compilation targets using clang
 
@@ -23,6 +23,16 @@ case "$TARGET" in
         OS=WINDOWS
 	EXE=radiance.exe
 	STRIP=x86_64-w64-mingw32-strip
+	;;
+    x86_64-apple-darwin)
+        OS=MACOS
+	EXE=radiance
+	STRIP=strip
+	;;
+    aarch64-apple-darwin)
+        OS=MACOS
+	EXE=radiance
+	STRIP=strip
 	;;
     *)
         echo "Unknown TARGET" >&2
@@ -93,32 +103,23 @@ case "$OS" in
     mkdir -p /tmp/native-lib-pc/
 
     # Skip linker flags for mpv since we need more fine-grained control over it
-    cat <<EOF >/tmp/native-lib-pc/mpv.pc
-Name: mpv
-Description: placeholder
-Version: 999
-Cflags: 
-Libs: 
-EOF
-
-    cat <<EOF >/tmp/native-lib-pc/x11.pc
-Name: X11
-Description: placeholder
-Version: 999
-Cflags: 
-Libs: -lX11
-EOF
-
-    cat <<EOF >/tmp/native-lib-pc/alsa.pc
-Name: alsa
-Description: placeholder
-Version: 999
-Cflags: 
-Libs: -lasound
-EOF
-
-    #PKG_CONFIG_LIBDIR="/tmp/native-lib-pc/" \
-    #PKG_CONFIG_PATH="/tmp/native-lib-pc/" \
+#    cat <<EOF >/tmp/native-lib-pc/mpv.pc
+#Name: mpv
+#Description: placeholder
+#Version: 999
+#Cflags:
+#Libs:
+#EOF
+    ;;
+  MACOS)
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=Cocoa"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=IOKit"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=CoreFoundation"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=CoreVideo"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=CoreAudio"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=AudioToolbox"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=AVFoundation"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=OpenGL"
     ;;
   *)
     echo "Unknown target: $TARGET" >&2
