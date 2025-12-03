@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-set -x
 
 # Usage: TARGET=x86_64-pc-windows-gnu .github/scripts/build.sh
 
@@ -23,6 +22,7 @@ case "$TARGET" in
         OS=WINDOWS
 	EXE=radiance.exe
 	STRIP=x86_64-w64-mingw32-strip
+	WINDRES=x86_64-w64-mingw32-windres
 	;;
     x86_64-apple-darwin)
         OS=MACOS
@@ -66,6 +66,44 @@ done
 # Platform-specific linking
 case "$OS" in
   WINDOWS)
+    # Generate ICO file
+    convert library/logo.png \
+          \( -clone 0 -resize 16x16 \) \
+          \( -clone 0 -resize 24x24 \) \
+          \( -clone 0 -resize 32x32 \) \
+          \( -clone 0 -resize 48x48 \) \
+          \( -clone 0 -resize 256x256 \) \
+          -delete 0 -alpha off -colors 256 /tmp/radiance_icon.ico
+
+    cat <<EOF >/tmp/radiance_info.rc
+0 ICON "/tmp/radiance_icon.ico"
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "Radiance"
+      VALUE "FileDescription", "Video art software designed for live performance"
+      VALUE "FileVersion", "1.0"
+      VALUE "InternalName", "radiance"
+      VALUE "OriginalFilename", "radiance.exe"
+      VALUE "ProductName", "Radiance"
+      VALUE "ProductVersion", "1.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
+EOF
+    $WINDRES /tmp/radiance_info.rc /tmp/radiance_info.o
+
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=/tmp/radiance_info.o"
+
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,--allow-multiple-definition"
     # Wrap all static libraries in a group to resolve circular dependencies
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bstatic"
@@ -97,19 +135,6 @@ case "$OS" in
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-lgcc"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-Bdynamic"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-lc"
-
-    # Populate /tmp/native-lib-pc with fake pkg-config files so we only dynamically link the things we want to
-    rm -rf /tmp/native-lib-pc/
-    mkdir -p /tmp/native-lib-pc/
-
-    # Skip linker flags for mpv since we need more fine-grained control over it
-#    cat <<EOF >/tmp/native-lib-pc/mpv.pc
-#Name: mpv
-#Description: placeholder
-#Version: 999
-#Cflags:
-#Libs:
-#EOF
     ;;
   MACOS)
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=Cocoa"
