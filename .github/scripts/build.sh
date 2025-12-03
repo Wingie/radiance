@@ -120,6 +120,9 @@ case "$OS" in
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=AudioToolbox"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=AVFoundation"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=OpenGL"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=CoreMedia"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=VideoToolbox"
+    RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=DiskArbitration"
     ;;
   *)
     echo "Unknown target: $TARGET" >&2
