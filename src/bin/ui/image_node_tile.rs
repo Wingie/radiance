@@ -1,4 +1,4 @@
-use eframe::egui::{vec2, Align, ComboBox, Layout, RichText, TextureId, Ui};
+use egui::{vec2, Align, ComboBox, Layout, RichText, TextureId, Ui};
 use radiance::{Fit, ImageNodeProps, ImageNodeState};
 
 const PREVIEW_ASPECT_RATIO: f32 = 1.;

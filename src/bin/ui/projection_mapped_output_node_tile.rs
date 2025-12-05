@@ -1,5 +1,5 @@
 use crate::ui::{set_modal, ModalMemory, TileId};
-use eframe::egui::{vec2, Align, Checkbox, Id, Layout, TextureId, Ui};
+use egui::{vec2, Align, Checkbox, Id, Layout, TextureId, Ui};
 use radiance::{
     AvailableOutputScreen, ProjectionMappedOutputNodeProps, ProjectionMappedOutputNodeState,
 };

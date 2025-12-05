@@ -1,4 +1,4 @@
-use eframe::egui::{vec2, Align, Checkbox, ComboBox, Layout, TextureId, Ui};
+use egui::{vec2, Align, Checkbox, ComboBox, Layout, TextureId, Ui};
 use radiance::{
     AvailableOutputScreen, ScreenOutputNodeProps, ScreenOutputNodeState, SelectedOutputScreen,
 };

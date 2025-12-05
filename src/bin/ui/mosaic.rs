@@ -11,7 +11,7 @@ use crate::ui::placeholder_node_tile::PlaceholderNodeTile;
 use crate::ui::projection_mapped_output_node_tile::ProjectionMappedOutputNodeTile;
 use crate::ui::screen_output_node_tile::ScreenOutputNodeTile;
 use crate::ui::tile::{Tile, TileId};
-use eframe::egui::{
+use egui::{
     pos2, vec2, Id, IdMap, InnerResponse, Key, Modifiers, Pos2, Rect, Response, Sense, TextureId,
     Ui, Vec2, Widget,
 };

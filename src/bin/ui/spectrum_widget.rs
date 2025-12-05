@@ -1,4 +1,4 @@
-use eframe::egui::Vec2;
+use egui::Vec2;
 use radiance::{ArcTextureViewSampler, SPECTRUM_LENGTH};
 use std::iter;
 

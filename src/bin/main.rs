@@ -6,7 +6,6 @@
 
 extern crate nalgebra as na;
 
-use eframe::{egui, egui_wgpu};
 use serde_json::json;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -14,12 +13,18 @@ use std::fs::{self, read_to_string, File};
 use std::io::Write;
 use std::iter;
 use std::path::Path;
+use std::sync::Arc;
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::{Window, WindowId};
 
 #[cfg(feature = "mpv")]
 use radiance::MovieNodeProps;
 use radiance::{
-    AutoDJ, Context, EffectNodeProps, ImageNodeProps, InsertionPoint, Mir, NodeId, NodeProps,
-    ProjectionMappedOutputNodeProps, Props, RenderTarget, RenderTargetId, ScreenOutputNodeProps,
+    ArcTextureViewSampler, AutoDJ, Context, EffectNodeProps, ImageNodeProps, InsertionPoint, Mir,
+    MusicInfo, NodeId, NodeProps, ProjectionMappedOutputNodeProps, Props, RenderTarget,
+    RenderTargetId, ScreenOutputNodeProps,
 };
 
 mod ui;
@@ -48,9 +53,10 @@ fn autosave(resource_dir: &Path, props: &Props) {
     inner().unwrap_or_else(|msg: String| println!("Failed to write autosave file: {}", msg));
 }
 
-fn main() -> eframe::Result {
+fn main() {
     env_logger::init();
 
+    // Prepare wgpu
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         flags: wgpu::InstanceFlags::from_env_or_default(),
@@ -83,30 +89,20 @@ fn main() -> eframe::Result {
     }))
     .unwrap();
 
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Radiance")
-            .with_maximized(true),
-        wgpu_options: egui_wgpu::WgpuConfiguration {
-            wgpu_setup: egui_wgpu::WgpuSetup::Existing(egui_wgpu::WgpuSetupExisting {
-                instance: instance.clone(),
-                adapter,
-                device,
-                queue,
-            }),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    eframe::run_native(
-        "Radiance",
-        native_options,
-        Box::new(|cc| Ok(Box::new(App::new(cc, instance)))),
-    )
+    // Prepare winit
+    let event_loop = EventLoop::new().unwrap();
+    event_loop.set_control_flow(ControlFlow::Poll);
+
+    // Prepare & run app
+    let mut app = App::new(instance, adapter, device, queue);
+    event_loop.run_app(&mut app).unwrap();
 }
 
 struct App<'a> {
     instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     mir: Mir,
     ctx: Context,
     props: Props,
@@ -117,9 +113,6 @@ struct App<'a> {
     auto_dj_2_enabled: bool,
     autosave_timer: usize,
     preview_render_target_id: RenderTargetId,
-    waveform_widget: WaveformWidget,
-    spectrum_widget: SpectrumWidget,
-    beat_widget: BeatWidget,
     waveform_texture: Option<egui::TextureId>,
     spectrum_texture: Option<egui::TextureId>,
     beat_texture: Option<egui::TextureId>,
@@ -129,10 +122,28 @@ struct App<'a> {
     insertion_point: InsertionPoint,
     preview_images: HashMap<NodeId, egui::TextureId>,
     winit_output: WinitOutput<'a>,
+    app_ui: Option<AppUi>, // Stuff we can't make until we have a window
+}
+
+struct AppUi {
+    egui_ctx: egui::Context,
+    egui_state: egui_winit::State,
+    egui_renderer: egui_wgpu::Renderer,
+    window: Arc<winit::window::Window>,
+    surface_config: wgpu::SurfaceConfiguration,
+    surface: wgpu::Surface<'static>,
+    waveform_widget: WaveformWidget,
+    spectrum_widget: SpectrumWidget,
+    beat_widget: BeatWidget,
 }
 
 impl App<'_> {
-    fn new(cc: &eframe::CreationContext<'_>, instance: wgpu::Instance) -> Self {
+    fn new(
+        instance: wgpu::Instance,
+        adapter: wgpu::Adapter,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+    ) -> Self {
         let resource_dir = directories::ProjectDirs::from("", "", "Radiance")
             .unwrap()
             .data_local_dir()
@@ -146,29 +157,13 @@ impl App<'_> {
 
         load_default_library(&resource_dir);
 
-        let egui_wgpu::RenderState { device, queue, .. } = cc.wgpu_render_state.as_ref().unwrap();
-        let pixels_per_point = cc.egui_ctx.pixels_per_point();
-
-        // Style
-
-        cc.egui_ctx.set_theme(egui::Theme::Dark);
-        cc.egui_ctx.style_mut(|style| {
-            style.interaction.selectable_labels = false;
-            style.visuals.handle_shape = egui::style::HandleShape::Circle;
-        });
-
         // RADIANCE, WOO
 
         // Make a Mir
         let mir = Mir::new();
 
         // Make context
-        let ctx = Context::new(resource_dir.clone(), device, queue);
-
-        // Make widgets
-        let waveform_widget = WaveformWidget::new(device, pixels_per_point);
-        let spectrum_widget = SpectrumWidget::new(device, pixels_per_point);
-        let beat_widget = BeatWidget::new(&device, pixels_per_point);
+        let ctx = Context::new(resource_dir.clone(), &device, &queue);
 
         let read_autosave_file = || {
             let contents = read_to_string(resource_dir.join(AUTOSAVE_FILENAME))
@@ -326,6 +321,9 @@ impl App<'_> {
 
         App {
             instance,
+            adapter,
+            device,
+            queue,
             mir,
             ctx,
             props,
@@ -336,9 +334,6 @@ impl App<'_> {
             auto_dj_2_enabled: false,
             autosave_timer: 0,
             preview_render_target_id,
-            waveform_widget,
-            spectrum_widget,
-            beat_widget,
             waveform_texture: None,
             spectrum_texture: None,
             beat_texture: None,
@@ -348,24 +343,11 @@ impl App<'_> {
             insertion_point: Default::default(),
             preview_images: Default::default(),
             winit_output,
+            app_ui: None,
         }
     }
-}
 
-impl eframe::App for App<'_> {
-    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        [0.2, 0.2, 0.2, 1.0]
-    }
-
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let egui_wgpu::RenderState {
-            adapter,
-            device,
-            queue,
-            renderer,
-            ..
-        } = frame.wgpu_render_state.as_ref().unwrap();
-
+    fn update(&mut self, event_loop: &ActiveEventLoop) {
         // Update
         let music_info = self.mir.poll();
         self.props.time = music_info.time;
@@ -378,8 +360,13 @@ impl eframe::App for App<'_> {
             .chain(self.winit_output.render_targets_iter())
             .map(|(k, v)| (*k, v.clone()))
             .collect();
-        self.winit_output
-            .update(event_loop, &mut self.props, &self.instance, adapter, device);
+        self.winit_output.update(
+            event_loop,
+            &mut self.props,
+            &self.instance,
+            &self.adapter,
+            &self.device,
+        );
         self.auto_dj_1.as_mut().map(|a| {
             a.update(&mut self.props);
 
@@ -397,8 +384,12 @@ impl eframe::App for App<'_> {
             }
         });
 
-        self.ctx
-            .update(device, queue, &mut self.props, &render_target_list);
+        self.ctx.update(
+            &self.device,
+            &self.queue,
+            &mut self.props,
+            &render_target_list,
+        );
 
         // Autosave if necessary
         // TODO: consider moving this to a background thread
@@ -410,19 +401,138 @@ impl eframe::App for App<'_> {
         }
 
         // Paint
-        let results = {
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Encoder"),
-            });
+        let radiance_paint_results = {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Encoder"),
+                });
 
-            let results =
-                self.ctx
-                    .paint(device, queue, &mut encoder, self.preview_render_target_id);
+            let results = self.ctx.paint(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                self.preview_render_target_id,
+            );
 
-            queue.submit(iter::once(encoder.finish()));
+            self.queue.submit(iter::once(encoder.finish()));
             results
         };
 
+        // Run the UI
+
+        {
+            let Some(app_ui) = &mut self.app_ui else {
+                return;
+            };
+            let raw_input = app_ui.egui_state.take_egui_input(&app_ui.window);
+            app_ui.egui_ctx.begin_pass(raw_input);
+        }
+        self.ui(&music_info, &radiance_paint_results);
+
+        let app_ui = self.app_ui.as_mut().unwrap();
+        let full_output = app_ui.egui_ctx.end_pass();
+
+        app_ui
+            .egui_state
+            .handle_platform_output(&app_ui.window, full_output.platform_output);
+
+        // Construct or destroy the AutoDJs
+        match (self.auto_dj_1_enabled, &mut self.auto_dj_1) {
+            (false, Some(_)) => {
+                self.auto_dj_1 = None;
+            }
+            (true, None) => {
+                self.auto_dj_1 = Some(AutoDJ::new());
+            }
+            _ => {}
+        }
+        match (self.auto_dj_2_enabled, &mut self.auto_dj_2) {
+            (false, Some(_)) => {
+                self.auto_dj_2 = None;
+            }
+            (true, None) => {
+                self.auto_dj_2 = Some(AutoDJ::new());
+            }
+            _ => {}
+        }
+
+        // Draw the UI
+        let tris = app_ui
+            .egui_ctx
+            .tessellate(full_output.shapes, full_output.pixels_per_point);
+
+        for (id, image_delta) in &full_output.textures_delta.set {
+            app_ui
+                .egui_renderer
+                .update_texture(&self.device, &self.queue, *id, image_delta);
+        }
+
+        let screen_descriptor = egui_wgpu::ScreenDescriptor {
+            size_in_pixels: [app_ui.surface_config.width, app_ui.surface_config.height],
+            pixels_per_point: app_ui.window.scale_factor() as f32,
+        };
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+        app_ui.egui_renderer.update_buffers(
+            &self.device,
+            &self.queue,
+            &mut encoder,
+            &tris,
+            &screen_descriptor,
+        );
+
+        let output = app_ui.surface.get_current_texture().unwrap();
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        {
+            let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.2,
+                            g: 0.2,
+                            b: 0.2,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            app_ui.egui_renderer.render(
+                &mut render_pass.forget_lifetime(),
+                &tris,
+                &screen_descriptor,
+            );
+
+            for id in &full_output.textures_delta.free {
+                app_ui.egui_renderer.free_texture(id);
+            }
+        }
+        self.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+    }
+
+    fn ui(
+        &mut self,
+        music_info: &MusicInfo,
+        radiance_paint_results: &HashMap<NodeId, ArcTextureViewSampler>,
+    ) {
         fn update_or_register_native_texture(
             egui_renderer: &mut egui_wgpu::Renderer,
             device: &wgpu::Device,
@@ -448,25 +558,25 @@ impl eframe::App for App<'_> {
             }
         }
 
+        let app_ui = self.app_ui.as_mut().unwrap();
+
         let waveform_size = egui::vec2(330., 65.);
         let spectrum_size = egui::vec2(330., 65.);
         let beat_size = egui::vec2(65., 65.);
         {
-            let mut r = renderer.write();
-
             for node_id in self.props.graph.nodes.iter() {
-                let native_texture = &results.get(&node_id).unwrap().view;
+                let native_texture = &radiance_paint_results.get(&node_id).unwrap().view;
                 match self.preview_images.entry(*node_id) {
                     Entry::Vacant(e) => {
-                        e.insert(r.register_native_texture(
-                            device,
+                        e.insert(app_ui.egui_renderer.register_native_texture(
+                            &self.device,
                             native_texture,
                             wgpu::FilterMode::Linear,
                         ));
                     }
                     Entry::Occupied(e) => {
-                        r.update_egui_texture_from_wgpu_texture(
-                            device,
+                        app_ui.egui_renderer.update_egui_texture_from_wgpu_texture(
+                            &self.device,
                             native_texture,
                             wgpu::FilterMode::Linear,
                             *e.get(),
@@ -477,60 +587,66 @@ impl eframe::App for App<'_> {
 
             for (node_id, egui_texture_id) in self.preview_images.iter() {
                 if !self.props.graph.nodes.contains(node_id) {
-                    r.free_texture(egui_texture_id);
+                    app_ui.egui_renderer.free_texture(egui_texture_id);
                 }
             }
 
             // Update & paint widgets
 
-            let waveform_native_texture = self.waveform_widget.paint(
-                &device,
-                &queue,
+            let waveform_native_texture = app_ui.waveform_widget.paint(
+                &self.device,
+                &self.queue,
                 waveform_size,
                 &music_info.audio,
                 music_info.uncompensated_unscaled_time,
             );
 
             update_or_register_native_texture(
-                &mut r,
-                &device,
+                &mut app_ui.egui_renderer,
+                &self.device,
                 &waveform_native_texture.view,
                 &mut self.waveform_texture,
             );
 
-            let spectrum_native_texture =
-                self.spectrum_widget
-                    .paint(&device, &queue, spectrum_size, &music_info.spectrum);
+            let spectrum_native_texture = app_ui.spectrum_widget.paint(
+                &self.device,
+                &self.queue,
+                spectrum_size,
+                &music_info.spectrum,
+            );
 
             update_or_register_native_texture(
-                &mut r,
-                &device,
+                &mut app_ui.egui_renderer,
+                &self.device,
                 &spectrum_native_texture.view,
                 &mut self.spectrum_texture,
             );
 
-            let beat_native_texture =
-                self.beat_widget
-                    .paint(device, queue, beat_size, music_info.unscaled_time);
+            let beat_native_texture = app_ui.beat_widget.paint(
+                &self.device,
+                &self.queue,
+                beat_size,
+                music_info.unscaled_time,
+            );
 
             update_or_register_native_texture(
-                &mut r,
-                device,
+                &mut app_ui.egui_renderer,
+                &self.device,
                 &beat_native_texture.view,
                 &mut self.beat_texture,
             );
         }
 
-        // EGUI update
-        let left_panel_response =
-            egui::SidePanel::left("left").show_animated(egui_ctx, self.left_panel_expanded, |ui| {
-                ui.text_edit_singleline(&mut self.node_add_textedit)
-            });
+        let left_panel_response = egui::SidePanel::left("left").show_animated(
+            &app_ui.egui_ctx,
+            self.left_panel_expanded,
+            |ui| ui.text_edit_singleline(&mut self.node_add_textedit),
+        );
 
-        let full_rect = egui_ctx.available_rect();
-        egui::CentralPanel::default().show(egui_ctx, |ui| {
+        let full_rect = app_ui.egui_ctx.available_rect();
+        egui::CentralPanel::default().show(&app_ui.egui_ctx, |ui| {
             let modal_id = ui.make_persistent_id("modal");
-            let modal_shown = modal_shown(egui_ctx, modal_id);
+            let modal_shown = modal_shown(&app_ui.egui_ctx, modal_id);
 
             ui.scope_builder(
                 {
@@ -606,7 +722,7 @@ impl eframe::App for App<'_> {
                             self.node_add_wants_focus = false;
                         }
                         if node_add_response.lost_focus() {
-                            if egui_ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
+                            if app_ui.egui_ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
                                 let node_add_textedit_str = self.node_add_textedit.as_str();
                                 if node_add_textedit_str.starts_with("http:")
                                     || node_add_textedit_str.starts_with("https:")
@@ -713,26 +829,151 @@ impl eframe::App for App<'_> {
             }
         });
 
-        // Construct or destroy the AutoDJs
-        match (self.auto_dj_1_enabled, &mut self.auto_dj_1) {
-            (false, Some(_)) => {
-                self.auto_dj_1 = None;
-            }
-            (true, None) => {
-                self.auto_dj_1 = Some(AutoDJ::new());
-            }
-            _ => {}
+        app_ui.egui_ctx.request_repaint();
+    }
+
+    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        let Some(app_ui) = &mut self.app_ui else {
+            return;
+        };
+        if new_size.width > 0 && new_size.height > 0 {
+            app_ui.surface_config.width = new_size.width;
+            app_ui.surface_config.height = new_size.height;
+            app_ui
+                .surface
+                .configure(&self.device, &app_ui.surface_config);
         }
-        match (self.auto_dj_2_enabled, &mut self.auto_dj_2) {
-            (false, Some(_)) => {
-                self.auto_dj_2 = None;
-            }
-            (true, None) => {
-                self.auto_dj_2 = Some(AutoDJ::new());
-            }
-            _ => {}
+    }
+}
+
+impl AppUi {
+    fn new(app: &App, window: winit::window::Window) -> Self {
+        // Make egui context
+        let egui_ctx = egui::Context::default();
+        egui_ctx.set_theme(egui::Theme::Dark);
+        egui_ctx.style_mut(|style| {
+            style.interaction.selectable_labels = false;
+            style.visuals.handle_shape = egui::style::HandleShape::Circle;
+        });
+
+        // Make egui state
+        let egui_state = egui_winit::State::new(
+            egui_ctx.clone(),
+            egui::ViewportId::ROOT,
+            &window,
+            None,
+            None,
+            None,
+        );
+
+        let window = Arc::new(window);
+
+        let size = window.inner_size();
+        let surface = app.instance.create_surface(window.clone()).unwrap();
+        let surface_caps = surface.get_capabilities(&app.adapter);
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .find(|f| f.is_srgb())
+            .copied()
+            .unwrap_or(surface_caps.formats[0]);
+
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::AutoVsync,
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+            desired_maximum_frame_latency: 2,
+        };
+
+        surface.configure(&app.device, &surface_config);
+
+        let egui_renderer = egui_wgpu::Renderer::new(
+            &app.device,
+            surface_format,
+            egui_wgpu::RendererOptions::default(),
+        );
+
+        // Make widgets
+        let pixels_per_point = window.scale_factor() as f32;
+        let waveform_widget = WaveformWidget::new(&app.device, pixels_per_point);
+        let spectrum_widget = SpectrumWidget::new(&app.device, pixels_per_point);
+        let beat_widget = BeatWidget::new(&app.device, pixels_per_point);
+
+        AppUi {
+            window,
+            surface_config,
+            surface,
+            egui_ctx,
+            egui_state,
+            egui_renderer,
+            waveform_widget,
+            spectrum_widget,
+            beat_widget,
+        }
+    }
+}
+
+impl ApplicationHandler for App<'_> {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.app_ui.is_none() {
+            let window_attributes = Window::default_attributes()
+                .with_title("Radiance")
+                .with_maximized(true);
+
+            let window = event_loop.create_window(window_attributes).unwrap();
+            self.app_ui = Some(AppUi::new(&self, window));
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        let Some(app_ui) = &mut self.app_ui else {
+            return;
+        };
+
+        if window_id != app_ui.window.id() {
+            return;
         }
 
-        egui_ctx.request_repaint();
+        // TODO: winit_output.on_event
+
+        let response = app_ui.egui_state.on_window_event(&app_ui.window, &event);
+
+        if response.repaint {
+            app_ui.window.request_redraw();
+        }
+
+        if response.consumed {
+            return;
+        }
+
+        match event {
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
+            WindowEvent::Resized(physical_size) => {
+                // TODO
+                self.resize(physical_size);
+            }
+            WindowEvent::RedrawRequested => {
+                self.update(event_loop);
+            }
+            _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        let Some(app_ui) = &mut self.app_ui else {
+            return;
+        };
+        app_ui.window.request_redraw();
     }
 }

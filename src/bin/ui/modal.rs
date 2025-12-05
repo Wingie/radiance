@@ -1,4 +1,4 @@
-use eframe::egui::{
+use egui::{
     pos2, vec2, Align, Color32, ComboBox, Context, Id, Layout, Rect, Response, Sense, Shape,
     Stroke, StrokeKind, TextureId, Ui, UiBuilder, Vec2, Widget,
 };
