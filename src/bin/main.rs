@@ -30,6 +30,7 @@ mod setup;
 use setup::load_default_library;
 
 mod winit_output;
+use winit_output::WinitOutput;
 
 const AUTOSAVE_INTERVAL_FRAMES: usize = 60 * 10;
 const AUTOSAVE_FILENAME: &str = "autosave.json";
@@ -88,7 +89,7 @@ fn main() -> eframe::Result {
             .with_maximized(true),
         wgpu_options: egui_wgpu::WgpuConfiguration {
             wgpu_setup: egui_wgpu::WgpuSetup::Existing(egui_wgpu::WgpuSetupExisting {
-                instance,
+                instance: instance.clone(),
                 adapter,
                 device,
                 queue,
@@ -100,11 +101,12 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Radiance",
         native_options,
-        Box::new(|cc| Ok(Box::new(App::new(cc)))),
+        Box::new(|cc| Ok(Box::new(App::new(cc, instance)))),
     )
 }
 
-struct App {
+struct App<'a> {
+    instance: wgpu::Instance,
     mir: Mir,
     ctx: Context,
     props: Props,
@@ -126,10 +128,11 @@ struct App {
     node_add_wants_focus: bool,
     insertion_point: InsertionPoint,
     preview_images: HashMap<NodeId, egui::TextureId>,
+    winit_output: WinitOutput<'a>,
 }
 
-impl App {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+impl App<'_> {
+    fn new(cc: &eframe::CreationContext<'_>, instance: wgpu::Instance) -> Self {
         let resource_dir = directories::ProjectDirs::from("", "", "Radiance")
             .unwrap()
             .data_local_dir()
@@ -319,7 +322,10 @@ impl App {
             serde_json::to_string(&render_target_list).unwrap()
         );
 
+        let winit_output = WinitOutput::new(&device);
+
         App {
+            instance,
             mir,
             ctx,
             props,
@@ -341,17 +347,19 @@ impl App {
             node_add_wants_focus: false,
             insertion_point: Default::default(),
             preview_images: Default::default(),
+            winit_output,
         }
     }
 }
 
-impl eframe::App for App {
+impl eframe::App for App<'_> {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         [0.2, 0.2, 0.2, 1.0]
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let egui_wgpu::RenderState {
+            adapter,
             device,
             queue,
             renderer,
@@ -367,10 +375,11 @@ impl eframe::App for App {
         let render_target_list = self
             .render_target_list
             .iter()
-            //.chain(winit_output.render_targets_iter()) // TODO
+            .chain(self.winit_output.render_targets_iter())
             .map(|(k, v)| (*k, v.clone()))
             .collect();
-        //winit_output.update(event_loop, &mut props); // TODO
+        self.winit_output
+            .update(event_loop, &mut self.props, &self.instance, adapter, device);
         self.auto_dj_1.as_mut().map(|a| {
             a.update(&mut self.props);
 
