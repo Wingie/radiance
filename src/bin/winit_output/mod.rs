@@ -96,6 +96,7 @@ struct VisibleScreenOutput {
     request_close: bool,  // If set to True, delete this window on the next update
     name: String,
     resolution: [u32; 2],
+    can_draw: bool,
 }
 
 #[derive(Debug)]
@@ -111,6 +112,7 @@ struct VisibleProjectionMappedSingleOutput {
     vertices: Vec<ProjectionMapVertex>,
     indices: Vec<u16>,
     indices_count: u32,
+    can_draw: bool,
 }
 
 #[derive(Debug)]
@@ -296,6 +298,7 @@ impl WinitOutput<'_> {
             ))
     }
 
+    // returns true if present() was called (forcing vsync)
     pub fn update(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -305,7 +308,7 @@ impl WinitOutput<'_> {
         adapter: &wgpu::Adapter,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) {
+    ) -> bool {
         // Mark all nodes that we know about as having received their initial update.
         // Painting is gated on this being true,
         // because otherwise, we might try to paint a render target that the radiance context doesn't know about.
@@ -644,6 +647,8 @@ impl WinitOutput<'_> {
             }
         }
 
+        let mut did_vsync = false;
+
         // Paint each screen output
         for (node_id, screen_output) in self
             .screen_outputs
@@ -670,6 +675,13 @@ impl WinitOutput<'_> {
 
                 let results =
                     ctx.paint(device, queue, &mut encoder, screen_output.render_target_id);
+
+                // See if this window is drawable (not occluded)
+                if !screen_output.can_draw {
+                    continue;
+                }
+                screen_output.can_draw = false;
+                screen_output.window.request_redraw();
 
                 if let Some(texture) = results.get(node_id) {
                     let output_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -727,6 +739,7 @@ impl WinitOutput<'_> {
                     // Draw
                     screen_output.window.pre_present_notify();
                     output.present();
+                    did_vsync = true;
                 }
             }
         }
@@ -774,6 +787,13 @@ impl WinitOutput<'_> {
                         });
 
                     let results = ctx.paint(device, queue, &mut encoder, output.render_target_id);
+
+                    // See if this window is drawable (not occluded)
+                    if !single_output.can_draw {
+                        continue;
+                    }
+                    single_output.can_draw = false;
+                    single_output.window.request_redraw();
 
                     if let Some(texture) = results.get(node_id) {
                         let output_bind_group =
@@ -841,10 +861,13 @@ impl WinitOutput<'_> {
                         // Draw
                         single_output.window.pre_present_notify();
                         output.present();
+                        did_vsync = true;
                     }
                 }
             }
         }
+
+        did_vsync
     }
 
     fn new_screen_output(
@@ -877,7 +900,7 @@ impl WinitOutput<'_> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::AutoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -941,6 +964,7 @@ impl WinitOutput<'_> {
             request_close: false,
             name: name.to_owned(),
             resolution: *resolution,
+            can_draw: false,
         }
     }
 
@@ -972,7 +996,7 @@ impl WinitOutput<'_> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::AutoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -1050,6 +1074,7 @@ impl WinitOutput<'_> {
             vertices: Vec::<_>::new(),
             indices: Vec::<_>::new(),
             indices_count: 0,
+            can_draw: false,
         }
     }
 
@@ -1082,6 +1107,9 @@ impl WinitOutput<'_> {
                 WindowEvent::Resized(physical_size) => {
                     screen_output.resize(device, physical_size.clone());
                 }
+                WindowEvent::RedrawRequested => {
+                    screen_output.can_draw = true;
+                }
                 _ => {}
             }
             return true;
@@ -1106,6 +1134,9 @@ impl WinitOutput<'_> {
                     }
                     WindowEvent::Resized(physical_size) => {
                         single_output.resize(&device, physical_size.clone());
+                    }
+                    WindowEvent::RedrawRequested => {
+                        single_output.can_draw = true;
                     }
                     _ => {}
                 }

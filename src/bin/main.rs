@@ -14,6 +14,7 @@ use std::io::Write;
 use std::iter;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -135,6 +136,7 @@ struct AppUi {
     waveform_widget: WaveformWidget,
     spectrum_widget: SpectrumWidget,
     beat_widget: BeatWidget,
+    can_draw: bool,
 }
 
 impl App<'_> {
@@ -347,7 +349,10 @@ impl App<'_> {
         }
     }
 
-    fn update(&mut self, event_loop: &ActiveEventLoop) {
+    // returns true if present() was called (forcing vsync)
+    fn update(&mut self, event_loop: &ActiveEventLoop) -> bool {
+        let mut did_vsync = false;
+
         // Update
         let music_info = self.mir.poll();
         self.props.time = music_info.time;
@@ -416,7 +421,7 @@ impl App<'_> {
 
         {
             let Some(app_ui) = &mut self.app_ui else {
-                return;
+                return did_vsync;
             };
             let raw_input = app_ui.egui_state.take_egui_input(&app_ui.window);
             app_ui.egui_ctx.begin_pass(raw_input);
@@ -451,7 +456,7 @@ impl App<'_> {
         }
 
         // Update & paint other windows
-        self.winit_output.update(
+        if self.winit_output.update(
             event_loop,
             &mut self.ctx,
             &mut self.props,
@@ -459,7 +464,16 @@ impl App<'_> {
             &self.adapter,
             &self.device,
             &self.queue,
-        );
+        ) {
+            did_vsync = true;
+        }
+
+        // See if we can draw (window is not occluded)
+        if !app_ui.can_draw {
+            return did_vsync;
+        }
+        app_ui.can_draw = false;
+        app_ui.window.request_redraw();
 
         // Draw the UI
         let tris = app_ui
@@ -531,6 +545,8 @@ impl App<'_> {
         self.queue.submit(std::iter::once(encoder.finish()));
         app_ui.window.pre_present_notify();
         output.present();
+        did_vsync = true;
+        did_vsync
     }
 
     fn ui(
@@ -916,6 +932,7 @@ impl AppUi {
             waveform_widget,
             spectrum_widget,
             beat_widget,
+            can_draw: false,
         }
     }
 }
@@ -967,12 +984,23 @@ impl ApplicationHandler for App<'_> {
             WindowEvent::Resized(physical_size) => {
                 self.resize(physical_size);
             }
+            WindowEvent::RedrawRequested => {
+                app_ui.can_draw = true;
+            }
             _ => {}
         }
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        println!("UPDATE");
-        self.update(event_loop); // Blocks until next vsync
+        let did_vsync = self.update(event_loop);
+        if did_vsync {
+            event_loop.set_control_flow(ControlFlow::Poll);
+        } else {
+            // If we didn't vsync as part of rendering (e.g. all windows occluded,)
+            // fall back to a 60 FPS rate timed on the CPU
+            event_loop.set_control_flow(ControlFlow::WaitUntil(
+                Instant::now() + Duration::from_secs_f64(1. / 60.),
+            ));
+        }
     }
 }
