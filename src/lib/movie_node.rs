@@ -169,11 +169,7 @@ impl MovieNodeState {
         };
 
         // Spin up MPV thread
-        let file_path = ctx
-            .resource_dir
-            .join(format!("library/{}", name))
-            .to_string_lossy()
-            .to_string();
+        let file_path = ctx.fetch_library_path(name).to_string_lossy().to_string();
 
         let (mpv_thread, mpv_tx, mpv_rx) = {
             // Variables that will be moved into thread:

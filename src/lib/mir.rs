@@ -316,18 +316,16 @@ impl Mir {
 
         // Set up system audio
         let (stream, last_update) = match Self::audio_input(sender) {
-            Ok(stream) => {
-                (
-                    Some(stream),
-                    Update {
-                        wall_ref: time::Instant::now(),
-                        t_ref: 0.,
-                        tempo: 0., // This will hold t at 0 until the audio thread starts up
-                        audio: Default::default(),
-                        spectrum: [0.; SPECTRUM_LENGTH],
-                    },
-                )
-            }
+            Ok(stream) => (
+                Some(stream),
+                Update {
+                    wall_ref: time::Instant::now(),
+                    t_ref: 0.,
+                    tempo: DEFAULT_BPM / 60.,
+                    audio: Default::default(),
+                    spectrum: [0.; SPECTRUM_LENGTH],
+                },
+            ),
             Err(e) => {
                 println!("MIR: {}", e);
                 println!(

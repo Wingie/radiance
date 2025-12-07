@@ -73,10 +73,9 @@ impl ImageNodeState {
         let name = &props.name;
 
         // Image
-        let image_name = format!("library/{name}");
         let image_data = ctx
-            .fetch_content_bytes(&image_name)
-            .map_err(|_| format!("Failed to read image file \"{image_name}\""))?;
+            .fetch_library_content_bytes(&name)
+            .map_err(|_| format!("Failed to read image file from library: \"{name}\""))?;
 
         let image_obj = image::load_from_memory(&image_data).unwrap();
         let image_rgba = image_obj.to_rgba8();

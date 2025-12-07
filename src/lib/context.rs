@@ -547,13 +547,31 @@ impl Context {
     }
 
     /// Load content from disk or the library or something
-    pub fn fetch_content(&self, filename: &str) -> io::Result<String> {
-        fs::read_to_string(self.resource_dir.join(filename))
+    pub fn fetch_library_path(&self, filename: &str) -> PathBuf {
+        let library_path = self.resource_dir.join("library").join(filename);
+        let builtin_library_path = self.resource_dir.join("builtin_library").join(filename);
+        if self.resource_dir.join("library").join(filename).exists() {
+            library_path
+        } else if self
+            .resource_dir
+            .join("builtin_library")
+            .join(filename)
+            .exists()
+        {
+            builtin_library_path
+        } else {
+            library_path
+        }
+    }
+
+    /// Load content from disk or the library or something
+    pub fn fetch_library_content(&self, filename: &str) -> io::Result<String> {
+        fs::read_to_string(self.fetch_library_path(filename))
     }
 
     /// Load content from disk or the library or something as raw bytes
-    pub fn fetch_content_bytes(&self, filename: &str) -> io::Result<Vec<u8>> {
-        fs::read(self.resource_dir.join(filename))
+    pub fn fetch_library_content_bytes(&self, filename: &str) -> io::Result<Vec<u8>> {
+        fs::read(self.fetch_library_path(filename))
     }
 
     /// Get all node states
