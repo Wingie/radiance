@@ -1027,6 +1027,9 @@ impl ApplicationHandler for App<'_> {
 
         match event {
             WindowEvent::CloseRequested => {
+                // This assignment prevents the app from segfaulting on exit
+                // I think this is a bug in winit that may be fixed in a future version.
+                self.app_ui = None;
                 event_loop.exit();
             }
             WindowEvent::Resized(physical_size) => {
