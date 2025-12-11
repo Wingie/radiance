@@ -16,7 +16,10 @@ use egui::{
     pos2, vec2, Id, IdMap, InnerResponse, Key, Modifiers, Pos2, Rect, Response, Sense, TextureId,
     Ui, Vec2, Widget,
 };
-use radiance::{CommonNodeProps, Graph, InsertionPoint, NodeId, NodeProps, NodeState, Props};
+use radiance::{
+    CommonNodeProps, EffectNodeProps, Graph, InsertionPoint, NodeId, NodeProps, NodeState, Props,
+    UiBgNodeProps,
+};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
@@ -1180,15 +1183,17 @@ where
     // Graph interactions
     if mosaic_response.has_focus() {
         // Handle scroll wheel
-        let intensity_delta = ui.input(|i| i.smooth_scroll_delta.y) * INTENSITY_SCROLL_RATE;
-        if intensity_delta != 0. {
+        let value_delta = ui.input(|i| i.smooth_scroll_delta.y) * INTENSITY_SCROLL_RATE;
+        if value_delta != 0. {
             for node in mosaic_memory.selected.iter() {
                 match props.node_props.get_mut(node).unwrap() {
-                    NodeProps::EffectNode(node_props) => {
-                        if let Some(intensity) = node_props.intensity {
-                            node_props.intensity =
-                                Some((intensity + intensity_delta).clamp(0., 1.));
-                        }
+                    NodeProps::EffectNode(EffectNodeProps { intensity, .. }) => {
+                        intensity
+                            .as_mut()
+                            .map(|intensity| *intensity = (*intensity + value_delta).clamp(0., 1.));
+                    }
+                    NodeProps::UiBgNode(UiBgNodeProps { opacity }) => {
+                        *opacity = (*opacity + value_delta).clamp(0., 1.);
                     }
                     _ => {}
                 }
@@ -1235,13 +1240,13 @@ where
             if ui.input(|i| i.key_pressed(key)) {
                 for node in mosaic_memory.selected.iter() {
                     match props.node_props.get_mut(node).unwrap() {
-                        NodeProps::EffectNode(node_props) => {
-                            if let Some(intensity) = node_props.intensity.as_mut() {
+                        NodeProps::EffectNode(EffectNodeProps { intensity, .. }) => {
+                            intensity.as_mut().map(|intensity| {
                                 *intensity = value;
-                            }
+                            });
                         }
-                        NodeProps::UiBgNode(node_props) => {
-                            node_props.opacity = value;
+                        NodeProps::UiBgNode(UiBgNodeProps { opacity }) => {
+                            *opacity = value;
                         }
                         _ => {}
                     }

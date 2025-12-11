@@ -29,7 +29,7 @@ use radiance::{
 };
 
 mod ui;
-use ui::{UiBg, modal, modal_shown, mosaic};
+use ui::{modal, modal_shown, mosaic, UiBg};
 use ui::{BeatWidget, SpectrumWidget, WaveformWidget};
 
 mod setup;
@@ -282,7 +282,7 @@ impl App<'_> {
                     },
                     output_node_id.to_string(): {
                         "type": "UiBgNode",
-                        "opacity": 0.3,
+                        "opacity": 0.2,
                     }
                 },
                 "time": 0.,
@@ -341,7 +341,7 @@ impl App<'_> {
         // See if we need to (re-)create the UI BG render target
         if let Some(app_ui) = &mut self.app_ui {
             let wgpu::SurfaceConfiguration { width, height, .. } = app_ui.surface_config;
-            app_ui.ui_bg.maybe_resize(width, height);
+            app_ui.ui_bg.create_or_update_render_target(width, height);
         }
 
         // Merge our render list (preview + bg) and the winit_output render list:
@@ -352,7 +352,7 @@ impl App<'_> {
             .chain(
                 self.app_ui
                     .as_ref()
-                    .and_then(|app_ui| app_ui.ui_bg.render_target())
+                    .map(|app_ui| app_ui.ui_bg.render_target())
                     .into_iter(),
             )
             .chain(self.winit_output.render_targets_iter())
@@ -422,7 +422,7 @@ impl App<'_> {
             if let Some((&bg_render_target_id, _)) = self
                 .app_ui
                 .as_ref()
-                .and_then(|app_ui| app_ui.ui_bg.render_target())
+                .map(|app_ui| app_ui.ui_bg.render_target())
             {
                 let results =
                     self.ctx
@@ -485,9 +485,12 @@ impl App<'_> {
             did_vsync = true;
         }
 
-        let bg_textures = app_ui
-            .ui_bg
-            .update(&mut self.props, &radiance_ui_bg_paint_results);
+        app_ui.ui_bg.update(
+            &self.device,
+            &self.queue,
+            &self.props,
+            &radiance_ui_bg_paint_results,
+        );
 
         // UI GPU update
         let tris = app_ui
@@ -546,9 +549,8 @@ impl App<'_> {
                 occlusion_query_set: None,
             });
 
-            app_ui
-                .ui_bg
-                .render(&self.device, &mut render_pass, &bg_textures);
+            // Draw background
+            app_ui.ui_bg.render(&self.device, &mut render_pass);
 
             // Draw EGUI
             app_ui.egui_renderer.render(

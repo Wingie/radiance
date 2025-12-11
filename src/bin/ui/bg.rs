@@ -1,25 +1,39 @@
 use std::collections::HashMap;
 
-use radiance::{ArcTextureViewSampler, NodeId, RenderTarget, RenderTargetId};
+use radiance::{ArcTextureViewSampler, NodeId, RenderTarget, RenderTargetId, UiBgNodeProps};
 
 #[derive(Debug)]
 pub struct UiBg {
-    _bg_shader_module: wgpu::ShaderModule,
-    _bg_bind_group_1_layout: wgpu::BindGroupLayout,
-    bg_bind_group_2_layout: wgpu::BindGroupLayout,
-    _bg_render_pipeline_layout: wgpu::PipelineLayout,
-    bg_render_pipeline: wgpu::RenderPipeline,
-    bg_render_target: Option<(RenderTargetId, RenderTarget)>,
+    _shader_module: wgpu::ShaderModule,
+    bind_group_1_layout: wgpu::BindGroupLayout,
+    bind_group_2_layout: wgpu::BindGroupLayout,
+    _render_pipeline_layout: wgpu::PipelineLayout,
+    render_pipeline: wgpu::RenderPipeline,
+    render_target: Option<(RenderTargetId, RenderTarget)>,
+    passes: Vec<UiBgPass>,
+}
+
+#[derive(Debug)]
+struct UiBgPass {
+    texture: ArcTextureViewSampler,
+    uniform_buffer: wgpu::Buffer,
+}
+
+// The uniform buffer associated with the effect
+#[repr(C)]
+#[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct Uniforms {
+    opacity: f32,
 }
 
 impl UiBg {
     pub fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
         // Set up WGPU resources for drawing the UI BG
-        let bg_shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("BG output shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("bg.wgsl").into()),
         });
-        let bg_bind_group_1_layout =
+        let bind_group_1_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0, // UpdateUniforms
@@ -33,7 +47,7 @@ impl UiBg {
                 }],
                 label: Some("bg bind group layout 1 (uniforms)"),
             });
-        let bg_bind_group_2_layout =
+        let bind_group_2_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
@@ -55,25 +69,25 @@ impl UiBg {
                 ],
                 label: Some("bg bind group layout 2 (textures)"),
             });
-        let bg_render_pipeline_layout =
+        let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("bg render pipeline layout"),
-                bind_group_layouts: &[&bg_bind_group_2_layout], // XXX &bg_bind_group_1_layout,
+                bind_group_layouts: &[&bind_group_1_layout, &bind_group_2_layout],
                 push_constant_ranges: &[],
             });
 
         // Make BG render pipeline
-        let bg_render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("bg render pipeline"),
-            layout: Some(&bg_render_pipeline_layout),
+            layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &bg_shader_module,
+                module: &shader_module,
                 entry_point: Some("vs_main"),
                 buffers: &[],
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                module: &bg_shader_module,
+                module: &shader_module,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_format,
@@ -102,65 +116,104 @@ impl UiBg {
         });
 
         Self {
-            _bg_shader_module: bg_shader_module,
-            _bg_bind_group_1_layout: bg_bind_group_1_layout,
-            bg_bind_group_2_layout,
-            _bg_render_pipeline_layout: bg_render_pipeline_layout,
-            bg_render_pipeline,
-            bg_render_target: None,
+            _shader_module: shader_module,
+            bind_group_1_layout,
+            bind_group_2_layout,
+            _render_pipeline_layout: render_pipeline_layout,
+            render_pipeline,
+            render_target: None,
+            passes: vec![],
         }
     }
 
-    pub fn render_target(&self) -> Option<(&RenderTargetId, &RenderTarget)> {
-        self.bg_render_target
-            .as_ref()
-            .map(|(render_target_id, render_target)| (render_target_id, render_target))
+    pub fn render_target(&self) -> (&RenderTargetId, &RenderTarget) {
+        let (render_target_id, render_target) = self.render_target.as_ref().unwrap();
+        (render_target_id, render_target)
     }
 
-    pub fn maybe_resize(&mut self, width: u32, height: u32) {
+    pub fn create_or_update_render_target(&mut self, width: u32, height: u32) {
         if !self
-            .bg_render_target
+            .render_target
             .as_ref()
             .is_some_and(|(_, rt)| rt.width() == width && rt.height() == height)
         {
-            self.bg_render_target = Some((
+            self.render_target = Some((
                 RenderTargetId::gen(),
                 RenderTarget::new(width, height, 1. / 60.),
             ));
         }
     }
 
-    pub fn update<'a>(
-        &self,
+    pub fn update(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
         props: &radiance::Props,
-        paint_results: &'a HashMap<NodeId, ArcTextureViewSampler>,
-    ) -> Vec<(NodeId, &'a ArcTextureViewSampler)> {
+        paint_results: &HashMap<NodeId, ArcTextureViewSampler>,
+    ) {
         // Collect and upload data related to the UI BG drawing
-        let mut bg_textures: Vec<_> = paint_results
+        let mut passes: Vec<_> = paint_results
             .iter()
-            .filter_map(|(&node_id, texture)| {
+            .enumerate()
+            .filter_map(|(i, (&node_id, texture))| {
                 props
                     .node_props
                     .get(&node_id)
-                    .and_then(|node_state| <&radiance::UiBgNodeProps>::try_from(node_state).ok())
-                    .map(|_ui_bg_node_state| (node_id, texture))
+                    .and_then(|props| <&UiBgNodeProps>::try_from(props).ok())
+                    .map(|&UiBgNodeProps { opacity }| {
+                        let uniform_buffer = if let Some(UiBgPass { uniform_buffer, .. }) =
+                            self.passes.get(i)
+                        {
+                            // Re-use the buffer if one exists
+                            uniform_buffer.clone()
+                        } else {
+                            // Otherwise create a new buffer
+                            device.create_buffer(&wgpu::BufferDescriptor {
+                                label: Some("bg uniform buffer"),
+                                size: std::mem::size_of::<Uniforms>() as u64,
+                                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                                mapped_at_creation: false,
+                            })
+                        };
+
+                        // Write to the buffer
+                        let uniforms = Uniforms { opacity };
+                        queue.write_buffer(&uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
+                        // Return the pass
+                        (
+                            node_id,
+                            UiBgPass {
+                                texture: texture.clone(),
+                                uniform_buffer,
+                            },
+                        )
+                    })
             })
             .collect();
-        // Sort to maintain a stable superposition
-        bg_textures.sort_by_key(|&(node_id, _)| node_id);
-        bg_textures
+
+        // Sort by node ID to maintain a stable superposition
+        passes.sort_by_key(|&(node_id, _)| node_id);
+        self.passes = passes.into_iter().map(|(_, pass)| pass).collect();
     }
 
-    pub fn render(
-        &self,
-        device: &wgpu::Device,
-        render_pass: &mut wgpu::RenderPass,
-        bg_textures: &[(NodeId, &ArcTextureViewSampler)],
-    ) {
+    pub fn render(&self, device: &wgpu::Device, render_pass: &mut wgpu::RenderPass) {
         // Draw the UI BG
-        for (_, texture) in bg_textures.into_iter() {
-            let bg_bind_group_2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.bg_bind_group_2_layout,
+        for UiBgPass {
+            texture,
+            uniform_buffer,
+        } in self.passes.iter()
+        {
+            let bind_group_1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.bind_group_1_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }],
+                label: Some("bg bind group 1 (uniforms)"),
+            });
+            let bind_group_2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.bind_group_2_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -171,11 +224,12 @@ impl UiBg {
                         resource: wgpu::BindingResource::Sampler(&texture.sampler),
                     },
                 ],
-                label: Some("bg bind group"),
+                label: Some("bg bind group 2 (texture)"),
             });
 
-            render_pass.set_pipeline(&self.bg_render_pipeline);
-            render_pass.set_bind_group(0, &bg_bind_group_2, &[]);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &bind_group_1, &[]);
+            render_pass.set_bind_group(1, &bind_group_2, &[]);
             render_pass.draw(0..6, 0..1);
         }
     }

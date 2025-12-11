@@ -1,7 +1,14 @@
+struct Uniforms {
+    opacity: f32,
+}
+
 @group(0) @binding(0)
+var<uniform> global: Uniforms;
+
+@group(1) @binding(0)
 var iTexture: texture_2d<f32>;
 
-@group(0) @binding(1)
+@group(1) @binding(1)
 var iSampler: sampler;
 
 struct VertexOutput {
@@ -32,5 +39,5 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(iTexture, iSampler, vertex.uv);
+    return textureSample(iTexture, iSampler, vertex.uv) * global.opacity;
 }
