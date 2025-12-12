@@ -1,6 +1,6 @@
 use radiance::PlaceholderNodeProps;
 
-const NORMAL_HEIGHT: f32 = 200.;
+const NORMAL_HEIGHT: f32 = 240.;
 const NORMAL_WIDTH: f32 = 40.;
 
 pub struct PlaceholderNodeTile {}

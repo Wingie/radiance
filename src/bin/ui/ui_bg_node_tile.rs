@@ -2,8 +2,8 @@ use egui::{vec2, Align, Layout, Slider, TextureId, Ui};
 use radiance::{UiBgNodeProps, UiBgNodeState};
 
 const PREVIEW_ASPECT_RATIO: f32 = 1.;
-const NORMAL_HEIGHT: f32 = 300.;
-const NORMAL_WIDTH: f32 = 220.;
+const NORMAL_HEIGHT: f32 = 320.;
+const NORMAL_WIDTH: f32 = 240.;
 
 pub struct UiBgNodeTile<'a> {
     preview_image: TextureId,

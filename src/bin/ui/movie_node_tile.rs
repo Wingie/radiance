@@ -5,8 +5,8 @@ use egui::{
 use radiance::{Fit, MovieNodeProps, MovieNodeState, MovieNodeStateReady};
 
 const PREVIEW_ASPECT_RATIO: f32 = 1.;
-const NORMAL_HEIGHT: f32 = 200.;
-const NORMAL_WIDTH: f32 = 120.;
+const NORMAL_HEIGHT: f32 = 240.;
+const NORMAL_WIDTH: f32 = 160.;
 
 const SCRIM: Color32 = Color32::from_rgba_premultiplied(144, 144, 144, 230);
 const ICON: Color32 = Color32::from_rgb(102, 0, 170);
@@ -39,7 +39,7 @@ impl<'a> MovieNodeTile<'a> {
 
     /// Calculates the width of the tile, given its height.
     pub fn width_for_height(_props: &MovieNodeProps, height: f32) -> f32 {
-        NORMAL_WIDTH.min(0.5 * height)
+        NORMAL_WIDTH.min(0.6 * height)
     }
 
     /// Creates a new visual tile
@@ -88,7 +88,11 @@ impl<'a> MovieNodeTile<'a> {
             duration,
             fit,
         } = self;
-        ui.heading(title);
+        ui.add(
+            egui::Label::new(title.heading())
+                .truncate()
+                .show_tooltip_when_elided(true),
+        );
         // Preserve aspect ratio
         ui.with_layout(
             Layout::bottom_up(Align::Center).with_cross_justify(true),
@@ -120,6 +124,7 @@ impl<'a> MovieNodeTile<'a> {
                             Fit::Shrink => "Shrink",
                             Fit::Zoom => "Zoom",
                         })
+                        .width(ui.available_width())
                         .show_ui(ui, |ui| {
                             ui.selectable_value(fit, Fit::Crop, "Crop");
                             ui.selectable_value(fit, Fit::Shrink, "Shrink");

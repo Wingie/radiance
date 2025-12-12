@@ -5,8 +5,8 @@ use egui::{
 use radiance::{EffectNodeProps, EffectNodeState};
 
 const PREVIEW_ASPECT_RATIO: f32 = 1.;
-const NORMAL_HEIGHT: f32 = 200.;
-const NORMAL_WIDTH: f32 = 150.;
+const NORMAL_HEIGHT: f32 = 240.;
+const NORMAL_WIDTH: f32 = 160.;
 
 const SCRIM: Color32 = Color32::from_rgba_premultiplied(144, 144, 144, 230);
 const ICON: Color32 = Color32::from_rgb(102, 0, 170);
@@ -72,7 +72,11 @@ impl<'a> EffectNodeTile<'a> {
             frequency,
             state,
         } = self;
-        ui.heading(title);
+        ui.add(
+            egui::Label::new(title.heading())
+                .truncate()
+                .show_tooltip_when_elided(true),
+        );
         // Preserve aspect ratio
         ui.with_layout(
             Layout::bottom_up(Align::Center).with_cross_justify(true),
