@@ -742,15 +742,20 @@ impl App<'_> {
                             );
                         });
                     });
-
-                    let mosaic_response = ui.add(mosaic(
-                        "mosaic",
-                        &mut self.props,
-                        self.ctx.node_states(),
-                        &self.preview_images,
-                        &mut self.insertion_point,
-                        modal_id,
-                    ));
+                    let egui::containers::scroll_area::ScrollAreaOutput {inner:  mosaic_response, ..} = 
+                      egui::containers::scroll_area::ScrollArea::both()
+                      .auto_shrink(false)
+                      .show(ui, |ui| {
+                        ui.add(
+                        mosaic(
+                            "mosaic",
+                            &mut self.props,
+                            self.ctx.node_states(),
+                            &self.preview_images,
+                            &mut self.insertion_point,
+                            modal_id,
+                        ))
+                    });
 
                     if !self.left_panel_expanded && ui.input(|i| i.key_pressed(egui::Key::A)) {
                         self.left_panel_expanded = true;

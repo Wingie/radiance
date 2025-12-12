@@ -825,10 +825,10 @@ where
     let tiles = tiles.to_vec();
     let drop_targets = drop_targets.to_vec();
 
-    let mosaic_rect = ui.available_rect_before_wrap();
-    let mosaic_response = ui.allocate_rect(mosaic_rect, Sense::click());
+    let container_size = ui.available_size().max(*layout_size + Vec2::splat(32.)); // 32px margin
+    let (container_rect, mosaic_response) = ui.allocate_exact_size(container_size, Sense::click());
     let scrollarea_offset =
-        (mosaic_rect.min - Pos2::ZERO) + 0.5 * (mosaic_rect.size() - *layout_size);
+        (container_rect.min - Pos2::ZERO) + 0.5 * (container_size - *layout_size);
 
     // Apply focus, selection, drag, and animation
 
