@@ -690,6 +690,30 @@ impl App<'_> {
             let modal_id = ui.make_persistent_id("modal");
             let modal_shown = modal_shown(&app_ui.egui_ctx, modal_id);
 
+            let egui::InnerResponse {inner: mosaic_response, ..} = ui.scope_builder(
+                {
+                    let mut builder = egui::UiBuilder::default().max_rect(full_rect);
+                    builder.disabled = modal_shown;
+                    builder
+                },
+                |ui| {
+                    let egui::containers::scroll_area::ScrollAreaOutput {inner:  mosaic_response, ..} = 
+                      egui::containers::scroll_area::ScrollArea::both()
+                      .auto_shrink(false)
+                      .show(ui, |ui| {
+                        ui.add(
+                        mosaic(
+                            "mosaic",
+                            &mut self.props,
+                            self.ctx.node_states(),
+                            &self.preview_images,
+                            &mut self.insertion_point,
+                            modal_id,
+                        ))
+                    });
+                    mosaic_response
+                });
+
             ui.scope_builder(
                 {
                     let mut builder = egui::UiBuilder::default().max_rect(full_rect);
@@ -698,7 +722,7 @@ impl App<'_> {
                 },
                 |ui| {
                     egui::Frame::NONE
-                      .fill(egui::Color32::from_rgba_premultiplied(23, 23, 23, 230))
+                      .fill(egui::Color32::from_rgba_premultiplied(25, 25, 25, 250))
                       .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.set_min_width(ui.available_width());
@@ -741,20 +765,6 @@ impl App<'_> {
                                     .range(0. ..=1.),
                             );
                         });
-                    });
-                    let egui::containers::scroll_area::ScrollAreaOutput {inner:  mosaic_response, ..} = 
-                      egui::containers::scroll_area::ScrollArea::both()
-                      .auto_shrink(false)
-                      .show(ui, |ui| {
-                        ui.add(
-                        mosaic(
-                            "mosaic",
-                            &mut self.props,
-                            self.ctx.node_states(),
-                            &self.preview_images,
-                            &mut self.insertion_point,
-                            modal_id,
-                        ))
                     });
 
                     if !self.left_panel_expanded && ui.input(|i| i.key_pressed(egui::Key::A)) {

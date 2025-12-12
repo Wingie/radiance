@@ -635,6 +635,7 @@ impl MosaicAnimationManager {
         predicted_dt: f32,
         tile: Tile,
         dragging: bool,
+        scrollarea_offset: Vec2,
     ) -> Tile {
         match self.tiles.get_mut(&tile.ui_id()) {
             None => {
@@ -701,7 +702,7 @@ impl MosaicAnimationManager {
                     anim.toggle_time_alpha = time;
                 }
 
-                tile.with_rect(current_rect)
+                tile.with_rect(current_rect.translate(scrollarea_offset))
                     .with_offset(current_offset)
                     .with_z(current_z)
                     .with_alpha(current_alpha)
@@ -825,13 +826,15 @@ where
     let tiles = tiles.to_vec();
     let drop_targets = drop_targets.to_vec();
 
-    let container_size = ui.available_size().max(*layout_size + Vec2::splat(32.)); // 32px margin
+    // 100px top/bottom margin, 16px left/right margin
+    let container_size = ui.available_size().max(*layout_size + vec2(32., 200.));
     let (container_rect, mosaic_response) = ui.allocate_exact_size(container_size, Sense::click());
     let scrollarea_offset =
         (container_rect.min - Pos2::ZERO) + 0.5 * (container_size - *layout_size);
 
     // Apply focus, selection, drag, and animation
 
+    /*
     // Translate each tile according to the scrollarea offset
     let tiles: Vec<TileInMosaic> = tiles
         .into_iter()
@@ -849,6 +852,7 @@ where
             },
         )
         .collect();
+    */
 
     // Find the position of the upper left corner of the tile
     // that was the target of the drag
@@ -914,6 +918,7 @@ where
                     predicted_dt,
                     tile,
                     dragging,
+                    scrollarea_offset,
                 );
                 tile
             },
@@ -1028,7 +1033,7 @@ where
                     if delta != Vec2::ZERO {
                         // Workaround bug in egui: Discard the first delta,
                         // since it can be inaccurate when mixing touch + mouse
-                        let offset = tile_rect.min - Pos2::ZERO;
+                        let offset = (tile_rect.min - Pos2::ZERO) - scrollarea_offset;
                         drag_situation = DragSituation::Started(tile_id, offset);
                         // Treat starting a drag like a click,
                         // but ensure the tile is selected
@@ -1181,9 +1186,13 @@ where
     }
 
     // Graph interactions
-    if mosaic_response.has_focus() {
+    if mosaic_response.has_focus() && !mosaic_memory.selected.is_empty() {
         // Handle scroll wheel
-        let value_delta = ui.input(|i| i.smooth_scroll_delta.y) * INTENSITY_SCROLL_RATE;
+        let value_delta = ui.input_mut(|i| {
+            let delta = i.smooth_scroll_delta.y;
+            i.smooth_scroll_delta.y = 0.; // Consume the scroll
+            delta
+        }) * INTENSITY_SCROLL_RATE;
         if value_delta != 0. {
             for node in mosaic_memory.selected.iter() {
                 match props.node_props.get_mut(node).unwrap() {
