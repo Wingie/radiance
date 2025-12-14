@@ -20,16 +20,13 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
-#[cfg(feature = "mpv")]
-use radiance::MovieNodeProps;
 use radiance::{
-    ArcTextureViewSampler, AutoDJ, Context, EffectNodeProps, ImageNodeProps, InsertionPoint, Mir,
-    MusicInfo, NodeId, NodeProps, ProjectionMappedOutputNodeProps, Props, RenderTarget,
-    RenderTargetId, ScreenOutputNodeProps, UiBgNodeProps,
+    ArcTextureViewSampler, AutoDJ, Context, InsertionPoint, Mir, MusicInfo, NodeId, Props,
+    RenderTarget, RenderTargetId,
 };
 
 mod ui;
-use ui::{modal, modal_shown, mosaic, UiBg};
+use ui::{library, modal, modal_shown, mosaic, UiBg};
 use ui::{BeatWidget, SpectrumWidget, WaveformWidget};
 
 mod setup;
@@ -116,9 +113,8 @@ struct App<'a> {
     waveform_texture: Option<egui::TextureId>,
     spectrum_texture: Option<egui::TextureId>,
     beat_texture: Option<egui::TextureId>,
-    node_add_textedit: String,
     left_panel_expanded: bool,
-    node_add_wants_focus: bool,
+    library_newly_opened: bool,
     insertion_point: InsertionPoint,
     preview_images: HashMap<NodeId, egui::TextureId>,
     winit_output: WinitOutput<'a>,
@@ -318,9 +314,8 @@ impl App<'_> {
             waveform_texture: None,
             spectrum_texture: None,
             beat_texture: None,
-            node_add_textedit: String::new(),
             left_panel_expanded: false,
-            node_add_wants_focus: false,
+            library_newly_opened: false,
             insertion_point: Default::default(),
             preview_images: Default::default(),
             winit_output,
@@ -682,232 +677,144 @@ impl App<'_> {
         let left_panel_response = egui::SidePanel::left("left").show_animated(
             &app_ui.egui_ctx,
             self.left_panel_expanded,
-            |ui| ui.text_edit_singleline(&mut self.node_add_textedit),
+            |ui| library::library_ui(ui, self.library_newly_opened),
         );
 
         let full_rect = app_ui.egui_ctx.available_rect();
-        egui::CentralPanel::default().frame(egui::Frame::NONE).show(&app_ui.egui_ctx, |ui| {
-            let modal_id = ui.make_persistent_id("modal");
-            let modal_shown = modal_shown(&app_ui.egui_ctx, modal_id);
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE)
+            .show(&app_ui.egui_ctx, |ui| {
+                let modal_id = ui.make_persistent_id("modal");
+                let modal_shown = modal_shown(&app_ui.egui_ctx, modal_id);
 
-            let egui::InnerResponse {inner: mosaic_response, ..} = ui.scope_builder(
-                {
-                    let mut builder = egui::UiBuilder::default().max_rect(full_rect);
-                    builder.disabled = modal_shown;
-                    builder
-                },
-                |ui| {
-                    let egui::containers::scroll_area::ScrollAreaOutput {inner:  mosaic_response, ..} = 
-                      egui::containers::scroll_area::ScrollArea::both()
-                      .auto_shrink(false)
-                      .show(ui, |ui| {
-                        ui.add(
-                        mosaic(
-                            "mosaic",
-                            &mut self.props,
-                            self.ctx.node_states(),
-                            &self.preview_images,
-                            &mut self.insertion_point,
-                            modal_id,
-                        ))
-                    });
-                    mosaic_response
-                });
-
-            ui.scope_builder(
-                {
-                    let mut builder = egui::UiBuilder::default().max_rect(full_rect);
-                    builder.disabled = modal_shown;
-                    builder
-                },
-                |ui| {
-                    egui::Frame::NONE
-                      .fill(egui::Color32::from_rgba_premultiplied(25, 25, 25, 250))
-                      .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.set_min_width(ui.available_width());
-                            ui.image((self.waveform_texture.unwrap(), waveform_size));
-                            ui.image((self.spectrum_texture.unwrap(), spectrum_size));
-                            ui.image((self.beat_texture.unwrap(), beat_size));
-                            ui.checkbox(&mut self.auto_dj_1_enabled, "Auto DJ 1");
-                            ui.checkbox(&mut self.auto_dj_2_enabled, "Auto DJ 2");
-
-                            ui.label("Global timescale:");
-                            let timescales: &[f32] = &[0.125, 0.25, 0.5, 1., 2., 4., 8.];
-                            fn str_for_timescale(timescale: f32) -> String {
-                                if timescale < 1. {
-                                    format!("{}x slower", 1. / timescale)
-                                } else if timescale == 1. {
-                                    "1x".to_owned()
-                                } else if timescale > 1. {
-                                    format!("{}x faster", timescale)
-                                } else {
-                                    format!("{}", timescale)
-                                }
-                            }
-                            egui::ComboBox::from_id_salt("global timescale")
-                                .selected_text(str_for_timescale(self.mir.global_timescale).as_str())
-                                .show_ui(ui, |ui| {
-                                    for &timescale in timescales.iter() {
-                                        ui.selectable_value(
-                                            &mut self.mir.global_timescale,
-                                            timescale,
-                                            str_for_timescale(timescale).as_str(),
-                                        );
-                                    }
-                                });
-                            ui.label("Latency compensation:");
-                            ui.add(
-                                egui::DragValue::new(&mut self.mir.latency_compensation)
-                                    .speed(0.001)
-                                    .fixed_decimals(3)
-                                    .suffix("s")
-                                    .range(0. ..=1.),
-                            );
-                        });
-                    });
-
-                    if !self.left_panel_expanded && ui.input(|i| i.key_pressed(egui::Key::A)) {
-                        self.left_panel_expanded = true;
-                        self.node_add_wants_focus = true;
-                    }
-
-                    if let Some(egui::InnerResponse {
-                        inner: node_add_response,
-                        response: _,
-                    }) = left_panel_response
+                let egui::InnerResponse {
+                    inner: mosaic_response,
+                    ..
+                } = ui.scope_builder(
                     {
-                        // TODO all this side-panel handling is wonky. It is done, in part, to avoid mutating the props before it's drawn.
-                        // This needs to be factored out into a real "library" component.
-                        if self.node_add_wants_focus {
-                            node_add_response.request_focus();
-                            self.node_add_wants_focus = false;
-                        }
-                        if node_add_response.lost_focus() {
-                            if app_ui.egui_ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
-                                let node_add_textedit_str = self.node_add_textedit.as_str();
-                                if node_add_textedit_str.starts_with("file:")
-                                    || node_add_textedit_str.starts_with("http:")
-                                    || node_add_textedit_str.starts_with("https:")
-                                    || node_add_textedit_str.starts_with("ytdl:")
-                                    || node_add_textedit_str.starts_with("lavf:")
-                                    || node_add_textedit_str.starts_with("av:")
-                                    || node_add_textedit_str.ends_with(".mp4")
-                                    || node_add_textedit_str.ends_with(".mkv")
-                                    || node_add_textedit_str.ends_with(".avi")
-                                {
-                                    #[cfg(feature = "mpv")]
-                                    {
-                                        let new_node_id = NodeId::gen();
-                                        let new_node_props = NodeProps::MovieNode(MovieNodeProps {
-                                            name: self.node_add_textedit.clone(),
-                                            ..Default::default()
+                        let mut builder = egui::UiBuilder::default().max_rect(full_rect);
+                        builder.disabled = modal_shown;
+                        builder
+                    },
+                    |ui| {
+                        let egui::containers::scroll_area::ScrollAreaOutput {
+                            inner: mosaic_response,
+                            ..
+                        } = egui::containers::scroll_area::ScrollArea::both()
+                            .auto_shrink(false)
+                            .show(ui, |ui| {
+                                ui.add(mosaic(
+                                    "mosaic",
+                                    &mut self.props,
+                                    self.ctx.node_states(),
+                                    &self.preview_images,
+                                    &mut self.insertion_point,
+                                    modal_id,
+                                ))
+                            });
+                        mosaic_response
+                    },
+                );
+
+                ui.scope_builder(
+                    {
+                        let mut builder = egui::UiBuilder::default().max_rect(full_rect);
+                        builder.disabled = modal_shown;
+                        builder
+                    },
+                    |ui| {
+                        egui::Frame::NONE
+                            .fill(egui::Color32::from_rgba_premultiplied(25, 25, 25, 250))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.set_min_width(ui.available_width());
+                                    ui.image((self.waveform_texture.unwrap(), waveform_size));
+                                    ui.image((self.spectrum_texture.unwrap(), spectrum_size));
+                                    ui.image((self.beat_texture.unwrap(), beat_size));
+                                    ui.checkbox(&mut self.auto_dj_1_enabled, "Auto DJ 1");
+                                    ui.checkbox(&mut self.auto_dj_2_enabled, "Auto DJ 2");
+
+                                    ui.label("Global timescale:");
+                                    let timescales: &[f32] = &[0.125, 0.25, 0.5, 1., 2., 4., 8.];
+                                    fn str_for_timescale(timescale: f32) -> String {
+                                        if timescale < 1. {
+                                            format!("{}x slower", 1. / timescale)
+                                        } else if timescale == 1. {
+                                            "1x".to_owned()
+                                        } else if timescale > 1. {
+                                            format!("{}x faster", timescale)
+                                        } else {
+                                            format!("{}", timescale)
+                                        }
+                                    }
+                                    egui::ComboBox::from_id_salt("global timescale")
+                                        .selected_text(
+                                            str_for_timescale(self.mir.global_timescale).as_str(),
+                                        )
+                                        .show_ui(ui, |ui| {
+                                            for &timescale in timescales.iter() {
+                                                ui.selectable_value(
+                                                    &mut self.mir.global_timescale,
+                                                    timescale,
+                                                    str_for_timescale(timescale).as_str(),
+                                                );
+                                            }
                                         });
-                                        self.props.node_props.insert(new_node_id, new_node_props);
-                                        self.props
-                                            .graph
-                                            .insert_node(new_node_id, &self.insertion_point);
-                                    }
-                                    #[cfg(not(feature = "mpv"))]
-                                    {
-                                        println!("Cannot instantiate MovieNode for {}, mpv support is not enabled", node_add_textedit_str)
-                                    }
-                                } else if node_add_textedit_str.ends_with(".png")
-                                    || node_add_textedit_str.starts_with(".jpg")
-                                    || node_add_textedit_str.ends_with(".gif")
-                                {
+                                    ui.label("Latency compensation:");
+                                    ui.add(
+                                        egui::DragValue::new(&mut self.mir.latency_compensation)
+                                            .speed(0.001)
+                                            .fixed_decimals(3)
+                                            .suffix("s")
+                                            .range(0. ..=1.),
+                                    );
+                                });
+                            });
+
+                        if !self.left_panel_expanded && ui.input(|i| i.key_pressed(egui::Key::A)) {
+                            self.left_panel_expanded = true;
+                            self.library_newly_opened = true;
+                        }
+
+                        if let Some(egui::InnerResponse {
+                            inner: library_response,
+                            response: _,
+                        }) = left_panel_response
+                        {
+                            // Reset the focus flag after it's been used
+                            self.library_newly_opened = false;
+
+                            match library_response {
+                                library::LibraryResponse::AddNode(node_props) => {
                                     let new_node_id = NodeId::gen();
-                                    let new_node_props = NodeProps::ImageNode(ImageNodeProps {
-                                        name: self.node_add_textedit.clone(),
-                                        ..Default::default()
-                                    });
-                                    self.props.node_props.insert(new_node_id, new_node_props);
+                                    self.props.node_props.insert(new_node_id, node_props);
                                     self.props
                                         .graph
                                         .insert_node(new_node_id, &self.insertion_point);
-                                } else {
-                                    match self.node_add_textedit.as_str() {
-                                        "UiBg" => {
-                                            let new_node_id = NodeId::gen();
-                                            let new_node_props = NodeProps::UiBgNode(
-                                                UiBgNodeProps {
-                                                    ..Default::default()
-                                                },
-                                            );
-                                            self.props
-                                                .node_props
-                                                .insert(new_node_id, new_node_props);
-                                            self.props
-                                                .graph
-                                                .insert_node(new_node_id, &self.insertion_point);
-                                        }
-                                        "ScreenOutput" => {
-                                            let new_node_id = NodeId::gen();
-                                            let new_node_props = NodeProps::ScreenOutputNode(
-                                                ScreenOutputNodeProps {
-                                                    ..Default::default()
-                                                },
-                                            );
-                                            self.props
-                                                .node_props
-                                                .insert(new_node_id, new_node_props);
-                                            self.props
-                                                .graph
-                                                .insert_node(new_node_id, &self.insertion_point);
-                                        }
-                                        "ProjectionMappedOutput" => {
-                                            let new_node_id = NodeId::gen();
-                                            let new_node_props =
-                                                NodeProps::ProjectionMappedOutputNode(
-                                                    ProjectionMappedOutputNodeProps {
-                                                        ..Default::default()
-                                                    },
-                                                );
-                                            self.props
-                                                .node_props
-                                                .insert(new_node_id, new_node_props);
-                                            self.props
-                                                .graph
-                                                .insert_node(new_node_id, &self.insertion_point);
-                                        }
-                                        _ => {
-                                            let new_node_id = NodeId::gen();
-                                            let new_node_props =
-                                                NodeProps::EffectNode(EffectNodeProps {
-                                                    name: self.node_add_textedit.clone(),
-                                                    ..Default::default()
-                                                });
-                                            self.props
-                                                .node_props
-                                                .insert(new_node_id, new_node_props);
-                                            self.props
-                                                .graph
-                                                .insert_node(new_node_id, &self.insertion_point);
-                                            // TODO: select and focus the new node
-                                            // (consider making selection & focus part of the explicit state of mosaic, not memory)
-                                        }
-                                    }
+                                    self.left_panel_expanded = false;
+                                    mosaic_response.request_focus();
                                 }
+                                library::LibraryResponse::Close => {
+                                    self.left_panel_expanded = false;
+                                    mosaic_response.request_focus();
+                                }
+                                library::LibraryResponse::None => {}
                             }
-                            self.node_add_textedit.clear();
-                            self.left_panel_expanded = false;
-                            mosaic_response.request_focus();
                         }
-                    }
-                },
-            );
+                    },
+                );
 
-            if modal_shown {
-                ui.scope_builder(egui::UiBuilder::default().max_rect(full_rect), |ui| {
-                    ui.add(modal(
-                        modal_id,
-                        &mut self.props,
-                        self.ctx.node_states(),
-                        &self.preview_images,
-                    ));
-                });
-            }
-        });
+                if modal_shown {
+                    ui.scope_builder(egui::UiBuilder::default().max_rect(full_rect), |ui| {
+                        ui.add(modal(
+                            modal_id,
+                            &mut self.props,
+                            self.ctx.node_states(),
+                            &self.preview_images,
+                        ));
+                    });
+                }
+            });
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {

@@ -3,6 +3,7 @@ mod bg;
 mod drop_target;
 mod effect_node_tile;
 mod image_node_tile;
+pub mod library;
 mod modal;
 mod mosaic;
 #[cfg(feature = "mpv")]
