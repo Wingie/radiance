@@ -597,9 +597,9 @@ impl App<'_> {
 
         let app_ui = self.app_ui.as_mut().unwrap();
 
-        let waveform_size = egui::vec2(330., 65.);
-        let spectrum_size = egui::vec2(330., 65.);
-        let beat_size = egui::vec2(65., 65.);
+        let waveform_size = egui::vec2(330., 75.);
+        let spectrum_size = egui::vec2(330., 75.);
+        let beat_size = egui::vec2(75., 75.);
         {
             for node_id in self.props.graph.nodes.iter() {
                 let native_texture = &radiance_paint_results.get(&node_id).unwrap().view;
@@ -687,6 +687,7 @@ impl App<'_> {
                 let modal_id = ui.make_persistent_id("modal");
                 let modal_shown = modal_shown(&app_ui.egui_ctx, modal_id);
 
+                // Mosaic
                 let egui::InnerResponse {
                     inner: mosaic_response,
                     ..
@@ -716,6 +717,7 @@ impl App<'_> {
                     },
                 );
 
+                // Top bar
                 ui.scope_builder(
                     {
                         let mut builder = egui::UiBuilder::default().max_rect(full_rect);
@@ -803,6 +805,26 @@ impl App<'_> {
                         }
                     },
                 );
+
+                // Library toggle button
+                let arrow_icon = if self.left_panel_expanded {
+                    "\u{23F4}"
+                } else {
+                    "\u{23F5}"
+                };
+                let button_rect = egui::Rect::from_min_size(
+                    egui::pos2(full_rect.left(), full_rect.top() + 80.),
+                    egui::vec2(20.0, 80.0),
+                );
+                if ui
+                    .place(button_rect, egui::Button::new(arrow_icon))
+                    .clicked()
+                {
+                    self.left_panel_expanded = !self.left_panel_expanded;
+                    if self.left_panel_expanded {
+                        self.library_newly_opened = true;
+                    }
+                }
 
                 if modal_shown {
                     ui.scope_builder(egui::UiBuilder::default().max_rect(full_rect), |ui| {
