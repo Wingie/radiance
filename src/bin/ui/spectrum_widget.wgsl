@@ -17,6 +17,21 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
 };
 
+// 0xRRGGBBAA (SRGB) -> [r, g, b, a] in 0.0 - 1.0 (linear)
+fn unpack_color(color: u32) -> vec4<f32> {
+    let srgb = vec4<f32>(
+        f32((color >> 24u) & 255u),
+        f32((color >> 16u) & 255u),
+        f32((color >> 8u) & 255u),
+        f32(color & 255u),
+    ) / 255.0;
+
+    let cutoff = srgb < vec4<f32>(0.04045);
+    let lower = srgb / vec4<f32>(12.92);
+    let higher = pow((srgb + vec4<f32>(0.055)) / vec4<f32>(1.055), vec4<f32>(2.4));
+    return select(higher, lower, cutoff);
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var pos_array = array<vec2<f32>, 4>(
@@ -46,9 +61,9 @@ fn composite(under: vec4<f32>, over: vec4<f32>) -> vec4<f32> {
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    let spectrumColorOutline = vec4<f32>(0.667, 0.667, 0.667, 1.);
-    let spectrumColorBottom = vec4<f32>(0.267, 0., 0.444, 1.);
-    let spectrumColorTop = vec4<f32>(0.667, 0., 1., 1.);
+    let spectrumColorOutline = unpack_color(0xAAAAAAFF);
+    let spectrumColorBottom = unpack_color(0x440071FF);
+    let spectrumColorTop = unpack_color(0xAA00FFFF);
 
     let oneYPixel = 1. / global.resolution.y;
     let oneYPoint = 1. / global.size.y;

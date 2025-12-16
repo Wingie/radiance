@@ -33,6 +33,21 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     );
 }
 
+// 0xRRGGBBAA (SRGB) -> [r, g, b, a] in 0.0 - 1.0 (linear)
+fn unpack_color(color: u32) -> vec4<f32> {
+    let srgb = vec4<f32>(
+        f32((color >> 24u) & 255u),
+        f32((color >> 16u) & 255u),
+        f32((color >> 8u) & 255u),
+        f32(color & 255u),
+    ) / 255.0;
+
+    let cutoff = srgb < vec4<f32>(0.04045);
+    let lower = srgb / vec4<f32>(12.92);
+    let higher = pow((srgb + vec4<f32>(0.055)) / vec4<f32>(1.055), vec4<f32>(2.4));
+    return select(higher, lower, cutoff);
+}
+
 // Alpha-compsite two colors, putting one on top of the other
 fn composite(under: vec4<f32>, over: vec4<f32>) -> vec4<f32> {
     let a_out = 1. - (1. - over.a) * (1. - under.a);
@@ -47,10 +62,10 @@ fn box(p: vec2<f32>) -> f32 {
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    let ballOutlineColor = vec4<f32>(0.267, 0., 0.444, 1.);
-    let ballColorBottom = vec4<f32>(0.4, 0., 0.667, 1.);
-    let ballColorTop = vec4<f32>(0.667, 0., 1., 1.);
-    let floorColor = vec4<f32>(0.667, 0.667, 0.667, 1.);
+    let ballOutlineColor = unpack_color(0x440071FF);
+    let ballColorBottom = unpack_color(0x6600AAFF);
+    let ballColorTop = unpack_color(0xAA00FFFF);
+    let floorColor = unpack_color(0xAAAAAAFF);
 
     let height1 = 1. - pow(abs(2. * (fract(global.beat) - 0.5)), 2.);
     let height2 = height1 * (1. - 0.4 * (1. - step(3., global.beat % 4.)));
