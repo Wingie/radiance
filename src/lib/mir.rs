@@ -109,7 +109,8 @@ impl Mir {
             .unwrap()
             .filter(|config| {
                 (config.sample_format() == cpal::SampleFormat::I16
-                    || config.sample_format() == cpal::SampleFormat::U16)
+                    || config.sample_format() == cpal::SampleFormat::U16
+                    || config.sample_format() == cpal::SampleFormat::F32)
                     && SAMPLE_RATE_CPAL >= config.min_sample_rate()
                     && SAMPLE_RATE_CPAL <= config.max_sample_rate()
                     && match *config.buffer_size() {

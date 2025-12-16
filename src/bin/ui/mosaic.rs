@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex};
 
 const MARGIN: f32 = 20.;
 const MOSAIC_ANIMATION_DURATION: f32 = 0.5;
-const INTENSITY_SCROLL_RATE: f32 = 0.001;
+const INTENSITY_SCROLL_RATE: f32 = 0.002;
 const DROP_TARGET_WIDTH: f32 = 50.;
 const DROP_TARGET_DISPLACEMENT: f32 = 10.;
 
@@ -896,26 +896,6 @@ where
 
     // Apply focus, selection, drag, and animation
 
-    /*
-    // Translate each tile according to the scrollarea offset
-    let tiles: Vec<TileInMosaic> = tiles
-        .into_iter()
-        .map(
-            |TileInMosaic {
-                 tile,
-                 output_insertion_point,
-             }| {
-                let rect = tile.rect();
-                let rect = rect.translate(scrollarea_offset);
-                TileInMosaic {
-                    tile: tile.with_rect(rect),
-                    output_insertion_point,
-                }
-            },
-        )
-        .collect();
-    */
-
     // Find the position of the upper left corner of the tile
     // that was the target of the drag
     // so we can reference the whole contingent from this point
@@ -1250,8 +1230,10 @@ where
     if mosaic_response.has_focus() && !mosaic_memory.selected.is_empty() {
         // Handle scroll wheel
         let value_delta = ui.input_mut(|i| {
-            let delta = i.smooth_scroll_delta.y;
-            i.smooth_scroll_delta.y = 0.; // Consume the scroll
+            let delta = i.smooth_scroll_delta.y + i.smooth_scroll_delta.x;
+            // Consume the scroll
+            i.smooth_scroll_delta.x = 0.;
+            i.smooth_scroll_delta.y = 0.;
             delta
         }) * INTENSITY_SCROLL_RATE;
         if value_delta != 0. {
@@ -1271,7 +1253,7 @@ where
         }
 
         // Handle delete key
-        if ui.input(|i| i.key_pressed(Key::Delete)) {
+        if ui.input(|i| i.key_pressed(Key::Delete) || i.key_pressed(Key::Backspace)) {
             props.graph.delete_nodes(&mosaic_memory.selected);
         }
 

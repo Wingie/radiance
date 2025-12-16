@@ -653,10 +653,21 @@ impl WinitOutput<'_> {
                     .map(|n| &n == &screen_output.name)
                     .unwrap_or(false)
             });
-            if mh.is_some() {
-                screen_output
-                    .window
-                    .set_fullscreen(Some(Fullscreen::Borderless(mh.clone())));
+            if let Some(monitor) = mh {
+                #[cfg(target_os = "linux")]
+                {
+                    screen_output
+                        .window
+                        .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    if let Some(video_mode) = monitor.video_modes().next() {
+                        screen_output
+                            .window
+                            .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                    }
+                }
             }
 
             // Paint
@@ -759,10 +770,21 @@ impl WinitOutput<'_> {
                 let mh = event_loop
                     .available_monitors()
                     .find(|mh| mh.name().map(|n| &n == screen_name).unwrap_or(false));
-                if mh.is_some() {
-                    single_output
-                        .window
-                        .set_fullscreen(Some(Fullscreen::Borderless(mh.clone())));
+                if let Some(monitor) = mh {
+                    #[cfg(target_os = "linux")]
+                    {
+                        single_output
+                            .window
+                            .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        if let Some(video_mode) = monitor.video_modes().next() {
+                            single_output
+                                .window
+                                .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                        }
+                    }
                 }
 
                 // Write uniforms
