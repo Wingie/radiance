@@ -312,6 +312,18 @@ impl MovieNodeState {
                                 );
                             }
                         }
+                        #[cfg(target_os = "macos")]
+                        {
+                            let opt = ffi::CString::new("macos-bundle-path").unwrap();
+                            let val = ffi::CString::new("/usr/local/bin,/usr/local/sbin,/opt/local/bin,/opt/local/sbin,/opt/homebrew/bin,/opt/homebrew/sbin").unwrap();
+                            unsafe {
+                                libmpv_sys::mpv_set_option_string(
+                                    transmute_copy(&mpv_init),
+                                    opt.as_ptr(),
+                                    val.as_ptr(),
+                                );
+                            }
+                        }
                         Ok(())
                     })
                     .unwrap();
