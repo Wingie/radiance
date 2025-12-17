@@ -125,7 +125,11 @@ pub fn library_ui(ui: &mut egui::Ui, ctx: &Context, newly_opened: bool) -> Libra
                 .enumerate()
                 .min_by_key(|(_, item)| {
                     let name_lower = item.name.to_lowercase();
-                    name_lower.find(&filter_text).unwrap_or(usize::MAX)
+                    (
+                        item.custom, // Prefer non-custom items over custom ones
+                        // Prefer substring to appear earlier in the name:
+                        name_lower.find(&filter_text).unwrap_or(usize::MAX),
+                    )
                 })
                 .map(|(i, _)| i);
         }
