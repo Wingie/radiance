@@ -256,6 +256,9 @@ jobs:
           mkdir dmg-contents
           cp -R Radiance.app dmg-contents/
 
+          # Create an alias to the Applications folder
+          ln -s /Applications dmg-contents/Applications
+
           # Create the DMG
           hdiutil create -volname "Radiance" -srcfolder dmg-contents -ov -format UDZO Radiance.dmg
 
