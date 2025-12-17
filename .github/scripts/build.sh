@@ -67,13 +67,7 @@ done
 case "$OS" in
   WINDOWS)
     # Generate ICO file
-    convert library/logo.png \
-          \( -clone 0 -resize 16x16 \) \
-          \( -clone 0 -resize 24x24 \) \
-          \( -clone 0 -resize 32x32 \) \
-          \( -clone 0 -resize 48x48 \) \
-          \( -clone 0 -resize 256x256 \) \
-          -delete 0 -background none -alpha on /tmp/radiance_icon.ico
+    magick library/logo.png -background transparent -colors 256 -define icon:auto-resize="128,64,48,32,16" /tmp/radiance_icon.ico
 
     cat <<EOF >/tmp/radiance_info.rc
 0 ICON "/tmp/radiance_icon.ico"
