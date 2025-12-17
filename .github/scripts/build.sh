@@ -73,7 +73,7 @@ case "$OS" in
           \( -clone 0 -resize 32x32 \) \
           \( -clone 0 -resize 48x48 \) \
           \( -clone 0 -resize 256x256 \) \
-          -delete 0 -colors 256 /tmp/radiance_icon.ico
+          -delete 0 -background none -alpha on /tmp/radiance_icon.ico
 
     cat <<EOF >/tmp/radiance_info.rc
 0 ICON "/tmp/radiance_icon.ico"

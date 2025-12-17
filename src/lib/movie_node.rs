@@ -174,12 +174,13 @@ impl MovieNodeState {
         {
             name.clone()
         } else {
-            // MPV always uses unix separators, even on Windows
-            ctx.library_path(name)
-                .components()
-                .map(|c| c.as_os_str().to_string_lossy())
-                .collect::<Vec<_>>()
-                .join("/")
+            let path_str = ctx.library_path(name).to_string_lossy().to_string();
+            #[cfg(target_os = "windows")]
+            {
+                // MPV always uses Unix separators, even on Windows
+                let path_str = path_str.replace('\\', "/");
+            }
+            path_str
         };
 
         let conf_file_path = ctx
