@@ -11,10 +11,10 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fs::{self, read_to_string, File};
 use std::io::Write;
-use std::iter;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::{env, iter};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -55,6 +55,19 @@ fn autosave(resource_dir: &Path, props: &Props) {
 
 fn main() {
     env_logger::init();
+
+    // Append build-time RADIANCE_ADDITIONAL_PATH to run-time PATH
+    // (this allows a MacOS bundle build to add homebrew directories to PATH
+    // so that a homebrew-installed yt-dlp can be found)
+    if let Some(additional_path) = option_env!("RADIANCE_ADDITIONAL_PATH") {
+        if let Ok(current_path) = env::var("PATH") {
+            let separator = if cfg!(windows) { ";" } else { ":" };
+            let new_path = format!("{}{}{}", current_path, separator, additional_path);
+            unsafe {
+                env::set_var("PATH", new_path);
+            }
+        }
+    }
 
     // Prepare wgpu
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {

@@ -148,6 +148,8 @@ EOF
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=CoreMedia"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=VideoToolbox"
     RUSTFLAGS="$RUSTFLAGS -C link-arg=-framework -C link-arg=DiskArbitration"
+
+    export RADIANCE_ADDITIONAL_PATH="/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:/opt/homebrew/sbin"
     ;;
   *)
     echo "Unknown target: $TARGET" >&2
