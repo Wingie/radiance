@@ -174,7 +174,7 @@ impl MovieNodeState {
         {
             name.clone()
         } else {
-            ctx.fetch_library_path(name).to_string_lossy().to_string()
+            ctx.library_path(name).to_string_lossy().to_string()
         };
 
         let conf_file_path = ctx

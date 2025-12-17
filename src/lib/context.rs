@@ -563,18 +563,21 @@ impl Context {
         self.render_target_states.get(&id)
     }
 
+    pub fn library_directory(&self) -> PathBuf {
+        self.resource_dir.join("library")
+    }
+
+    pub fn builtin_library_directory(&self) -> PathBuf {
+        self.resource_dir.join("builtin_library")
+    }
+
     /// Load content from disk or the library or something
-    pub fn fetch_library_path(&self, filename: &str) -> PathBuf {
-        let library_path = self.resource_dir.join("library").join(filename);
-        let builtin_library_path = self.resource_dir.join("builtin_library").join(filename);
-        if self.resource_dir.join("library").join(filename).exists() {
+    pub fn library_path(&self, filename: &str) -> PathBuf {
+        let library_path = self.library_directory().join(filename);
+        let builtin_library_path = self.builtin_library_directory().join(filename);
+        if library_path.exists() {
             library_path
-        } else if self
-            .resource_dir
-            .join("builtin_library")
-            .join(filename)
-            .exists()
-        {
+        } else if builtin_library_path.exists() {
             builtin_library_path
         } else {
             library_path
@@ -583,12 +586,12 @@ impl Context {
 
     /// Load content from disk or the library or something
     pub fn fetch_library_content(&self, filename: &str) -> io::Result<String> {
-        fs::read_to_string(self.fetch_library_path(filename))
+        fs::read_to_string(self.library_path(filename))
     }
 
     /// Load content from disk or the library or something as raw bytes
     pub fn fetch_library_content_bytes(&self, filename: &str) -> io::Result<Vec<u8>> {
-        fs::read(self.fetch_library_path(filename))
+        fs::read(self.library_path(filename))
     }
 
     /// List all files in the library and builtin_library directories

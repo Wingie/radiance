@@ -176,6 +176,15 @@ pub fn library_ui(ui: &mut egui::Ui, ctx: &Context, newly_opened: bool) -> Libra
                     response = LibraryResponse::AddNode(item.node_props.clone());
                 }
             }
+
+            ui.add_space(10.);
+            ui.vertical_centered(|ui| {
+                if ui.button("Open library folder").clicked() {
+                    open::that_detached(ctx.library_directory())
+                        .unwrap_or_else(|e| println!("Could not open library: {}", e));
+                }
+            });
+            ui.add_space(10.);
         });
 
     // Handle response

@@ -52,6 +52,7 @@ libmpv-sys = { git = "git+https://github.com/ervanalb/libmpv-rs", rev="189f5e45d
 surfman = { version = "0.7.0", features = ["sm-x11"] }
 glow = "0.12.1"
 crossbeam = "0.8.2"
+open = "5.3.3"
 
 
 # For memory profiling (see also src/bin/main.rs)
