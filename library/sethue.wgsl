@@ -1,4 +1,4 @@
-#property description Set the color in HSV space
+#property description Set the hue of every pixel to a constant value
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

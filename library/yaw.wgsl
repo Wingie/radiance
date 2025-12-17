@@ -1,4 +1,4 @@
-#property description Move input vertically
+#property description Move input horizontally
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let u = fract(uv.x + iIntensity * pow(defaultPulse, 2.));

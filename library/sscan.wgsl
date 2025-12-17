@@ -1,4 +1,4 @@
-#property description White slit for testing
+#property description White slit for testing (e.g. projector alignment)
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let xc = iIntensity;

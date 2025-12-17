@@ -1,4 +1,4 @@
-#property description Fill frame with NANs or INFs
+#property description Produce broken colors by filling the frame with NANs or INFs
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let zero = 0.0;

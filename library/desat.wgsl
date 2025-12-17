@@ -1,4 +1,4 @@
-#property description Desaturate in YUV space
+#property description Desaturate colors in YUV space
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let factor = pow(defaultPulse, 2.) * iIntensity;

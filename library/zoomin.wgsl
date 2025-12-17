@@ -1,4 +1,4 @@
-//#property description Zoom in, or bounce to the beat
+#property description Zoom in, or bounce to the beat
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let factor1 = 1. - iIntensity * pow(defaultPulse, 2.);

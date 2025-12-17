@@ -1,5 +1,5 @@
 #property description Apply black outline around edges
-//#property author https://www.shadertoy.com/view/XssGD7 + zbanks
+#property author https://www.shadertoy.com/view/XssGD7 + zbanks
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
 	// Sobel operator

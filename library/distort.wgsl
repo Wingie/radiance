@@ -1,4 +1,4 @@
-#property description Distort the screen
+#property description Random distortion
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let noise_input = vec3<f32>(uv, iTime * 0.3);

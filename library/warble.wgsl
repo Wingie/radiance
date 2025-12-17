@@ -1,4 +1,4 @@
-#property description Makes the image warbly
+#property description Smooth checkerboard distortion
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let newPt = (uv - 0.5) * aspectCorrection;

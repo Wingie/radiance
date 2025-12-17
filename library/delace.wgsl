@@ -1,4 +1,4 @@
-#property description Deinterlacing artifacts
+#property description Add deinterlacing artifacts
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let oddEven = floor(uv.x * iResolution.x) % 2. - 0.5; // either 0 or 1

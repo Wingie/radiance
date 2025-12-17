@@ -1,4 +1,4 @@
-#property description Reduce number of colors
+#property description Posterize (reduce the number of colors)
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     //float bins = 256. * pow(2, -8. * iIntensity);

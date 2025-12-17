@@ -1,4 +1,4 @@
-#property description Cycle the color (in HSV) over time
+#property description Cycle each pixel's hue through the rainbow
 #property frequency 0.5
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

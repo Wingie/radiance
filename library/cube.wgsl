@@ -1,7 +1,7 @@
 #property description 3D cube
 #property frequency 1
 
-// From maze.glsl
+// From maze.wgsl
 fn viewMatrix(eye: vec3<f32>, dir: vec3<f32>, up: vec3<f32>) -> mat4x4<f32> {
     // Based on gluLookAt man page
     let f = normalize(dir);

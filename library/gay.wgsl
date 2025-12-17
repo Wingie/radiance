@@ -1,4 +1,4 @@
-#property description Excessive rainbow
+#property description Full screen rainbow
 #property frequency 1
 
 // A radiance classic

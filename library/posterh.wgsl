@@ -1,4 +1,4 @@
-#property description Reduce number of hues in HSV space
+#property description Posterize the colors--reduce number of hues in HSV space
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let parameter = iIntensity * (0.5 + 0.5 * pow(defaultPulse, 2.));

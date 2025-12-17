@@ -1,4 +1,4 @@
-#property description Shift colors away from green (green is not a creative color)
+#property description Remove green by shifting green hues towards yellow or blue
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

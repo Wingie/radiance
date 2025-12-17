@@ -1,6 +1,7 @@
-#property description Lightspeed travel rays
-//#property author https://www.shadertoy.com/view/Xdl3D2
+#property description Resolution-independent starfield
 #property frequency 1
+
+// Original: https://www.shadertoy.com/view/Xdl3D2
 
 const tau: f32 = 6.28318530717958647692;
 

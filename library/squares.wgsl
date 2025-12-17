@@ -1,4 +1,4 @@
-#property description Rotating squares
+#property description Rotating squares. Cool illusion behavior at intensity=0.5
 #property inputCount 2
 #property frequency 1
 
@@ -6,7 +6,7 @@ fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);
     let x = iIntensity;
     // Dead width 
-    let dw = 0.22;
+    let dw = 0.1;
 
     // TODO: what's the right value for '0.3'?
     //float scale = pow(32.0, iIntensity) * 0.3;

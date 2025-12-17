@@ -1,4 +1,4 @@
-#property description Increase alpha ( undo "black" )
+#property description Increase opacity
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let c = textureSample(iInputsTex[0], iSampler, uv);

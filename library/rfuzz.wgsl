@@ -1,4 +1,4 @@
-#property description Radial fuzz based on audio
+#property description Radial fuzz distortion based on audio
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let normCoord = (uv - 0.5) * aspectCorrection;

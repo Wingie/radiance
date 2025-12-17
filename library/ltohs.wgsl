@@ -1,4 +1,4 @@
-#property description Set the hue and saturation equal to the lightness in HSV space
+#property description Set the hue and saturation equal to the lightness in HSV space. Can be used to add color to grayscale images
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

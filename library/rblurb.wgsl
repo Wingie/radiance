@@ -1,4 +1,5 @@
-#property description Created by inigo quilez - iq/2013
+#property description I forget what this does
+// Created by inigo quilez - iq/2013
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 // Modified for Radiance by Eric Van Albert
 

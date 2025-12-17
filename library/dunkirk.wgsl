@@ -1,4 +1,4 @@
-#property description Apply a Dunkirk-esque (dark blue) palette
+#property description Apply a dark blue color palette
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let pulse = pow(defaultPulse, 2.);

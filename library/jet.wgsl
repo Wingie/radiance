@@ -1,5 +1,6 @@
-#property description Matlab-ify the colors
-//#property author https://github.com/kbinani/glsl-colormap
+#property description Coerce colors to the jet palette from Matlab
+
+// Original: https://github.com/kbinani/glsl-colormap
 
 // [ From https://github.com/kbinani/glsl-colormap/blob/master/shaders/MATLAB_jet.frag
 fn colormap_red(x: f32) -> f32{

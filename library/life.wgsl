@@ -1,4 +1,4 @@
-#property description Game of life?
+#property description Conway's game of life
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let alive = textureSample(iChannelsTex[1], iSampler,  uv).r;

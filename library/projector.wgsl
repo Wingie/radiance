@@ -1,4 +1,4 @@
-#property description Projector light scattering
+#property description Simulate light scattering from a projector
 
 const DEPTH: i32 = 200;
 

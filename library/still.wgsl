@@ -1,6 +1,4 @@
-// I don't know what this is supposed to do
-
-#property description Stick chunks to the screen
+#property description Stick chunks to the screen (idk?)
 #property frequency 1
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

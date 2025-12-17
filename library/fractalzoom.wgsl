@@ -1,4 +1,4 @@
-#property description Overlays a smaller pattern and zoom in on it
+#property description Overlays several copies of the pattern and zoom through them
 #property frequency 0.5
 
 const N_COPIES = 8;

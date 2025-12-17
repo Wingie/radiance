@@ -1,4 +1,4 @@
-//#property description A green & red circle in the center
+#property description A green & red circle in the center
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let out_c = textureSample(iInputsTex[0], iSampler, uv);

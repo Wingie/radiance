@@ -1,4 +1,4 @@
-#property description The walls are melting
+#property description Flow colors down the screen
 #property frequency 1
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

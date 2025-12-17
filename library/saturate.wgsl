@@ -1,4 +1,4 @@
-#property description Saturate colors in HSV space
+#property description Increase color saturation
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let origColor = textureSample(iInputsTex[0], iSampler,  uv);

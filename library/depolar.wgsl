@@ -1,4 +1,4 @@
-#property description Convert rings to vertical lines
+#property description Convert rings to vertical lines (inverse of "polar")
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let angle  = (uv.y + 0.25 * iTime * iFrequency) * pi;

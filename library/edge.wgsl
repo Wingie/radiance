@@ -1,4 +1,5 @@
-#property description From https://www.shadertoy.com/view/XssGD7
+#property description Edge detection (resolution-dependent)
+// From https://www.shadertoy.com/view/XssGD7
 
 fn get_texture(uv: vec2<f32>) -> vec4<f32> {
     return textureSample(iInputsTex[0], iSampler,  uv);

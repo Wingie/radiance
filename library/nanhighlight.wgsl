@@ -1,4 +1,4 @@
-#property description Brightly highlight pixels that are NAN or INF
+#property description Identify broken color output by brightly highlighting pixels that are NAN or INF
 
 fn is_p_inf(x: f32) -> bool {
     return x > 0. && x * 2. == x;

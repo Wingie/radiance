@@ -1,4 +1,4 @@
-#property description Makes tileable
+#property description Overlaps a pattern with itself to make it tileable
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let o1 = vec2<f32>(0.5, 0.5);

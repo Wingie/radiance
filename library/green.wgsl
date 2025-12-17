@@ -1,4 +1,4 @@
-#property description Zero out the everything but the green channel (green is not a creative color)
+#property description Zero out the everything but the green channel
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

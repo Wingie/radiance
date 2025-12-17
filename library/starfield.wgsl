@@ -1,4 +1,4 @@
-#property description Pixels radiating from the center
+#property description Pixels radiating from the center (resolution-dependent)
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

@@ -1,4 +1,4 @@
-#property description Get (covered in random) rekt(angles)
+#property description Cover screen in random rectangles
 #property frequency 2
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

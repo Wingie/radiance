@@ -1,4 +1,4 @@
-#property description Replace -inf and NAN with 0, and +inf with 1
+#property description Fix broken color output by replacing -inf and NAN with 0, and +inf with 1
 
 fn fix(x: f32) -> f32 {
     if !(x > 0.) {

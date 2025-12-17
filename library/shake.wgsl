@@ -1,4 +1,4 @@
-#property description Shake the image when there are lows
+#property description Shake the image when there are lows in the audio
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let t = iTime * 2. *  pi;

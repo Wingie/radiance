@@ -1,4 +1,4 @@
-#property description Smooth output, or first order (expontential) hold to the beat
+#property description Opposite of motion blur--highlight moving things
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let cur = textureSample(iInputsTex[0], iSampler,  uv);

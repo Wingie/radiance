@@ -1,4 +1,4 @@
-#property description Brighten the image using gamma correction
+#property description Brighten the image using a gamma correction curve
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

@@ -1,4 +1,6 @@
-#property description Derivative of https://www.shadertoy.com/view/XssGD7, with tighter edges.
+// Derivative of https://www.shadertoy.com/view/XssGD7, with tighter edges.
+
+#property description Edge detection (resolution-independent)
 
 fn get_texture(uv: vec2<f32>, off: vec2<f32>, cor: vec2<f32>) -> vec4<f32> {
     return textureSample(iInputsTex[0], iSampler, uv + off * cor);

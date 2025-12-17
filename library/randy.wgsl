@@ -1,4 +1,4 @@
-#property description Obnoxiously zoom and rotate ( in honor of  Raaaaandy Seidman )
+#property description Subtle zoom and rotate
 #property frequency 0.5
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

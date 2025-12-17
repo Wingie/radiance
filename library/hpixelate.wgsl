@@ -1,4 +1,4 @@
-#property description Pixelate/quantize the output horizontally
+#property description Pixelate the output horizontally
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let normCoord = (uv - 0.5) * aspectCorrection;

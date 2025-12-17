@@ -1,4 +1,4 @@
-#property description Rotate the 'object' in 3D, like a coin
+#property description Rotate the object in 3D, like a spinning coin sprite from a video game
 #property frequency 1
 
 const WIDTH: f32 = 0.1;

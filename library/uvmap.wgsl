@@ -1,4 +1,4 @@
-//#property description Use .rg as .uv without crossfading
+#property description Distort first input according to second input. Uses red & green values of second input as UV lookup coordinates in first input.
 #property inputCount 2
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

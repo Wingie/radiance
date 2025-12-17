@@ -1,4 +1,5 @@
-#property description Introduce a delay (and reduce resolution)
+#property description Introduce a delay (and reduce resolution.)
+// More of a tech demo than actuall useful
 
 const SZ: f32 = 6.;    // Delay of SZ*SZ frames (36)
 fn main(uv: vec2<f32>) -> vec4<f32> {

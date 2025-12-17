@@ -1,6 +1,5 @@
-#property description Count out the beats
+#property description Count to 4 on a seven-segment display
 #property frequency 1
-// This looks really dumb if BTrack doesn't do a good job :/
 
 fn dist(pt: vec2<f32>, xbound: vec2<f32>, y: f32) -> f32 {
     // L1 distance function from a point to a X axis-aligned line segment

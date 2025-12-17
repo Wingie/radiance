@@ -1,4 +1,5 @@
 #property description Apply smoothing over time with new hits happening instantly
+#property frequency 1
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let prev = textureSample(iChannelsTex[0], iSampler,  uv);

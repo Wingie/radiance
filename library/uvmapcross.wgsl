@@ -1,4 +1,4 @@
-#property description Use .rg as .uv and crossfade
+#property description uvmap, but also crossfade to second input at full intensity
 #property inputCount 2
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

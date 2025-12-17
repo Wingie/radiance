@@ -1,4 +1,4 @@
-#property description Loopy laser-like pattern
+#property description A wiggly loop
 #property frequency 0.5
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

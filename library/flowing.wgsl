@@ -1,4 +1,4 @@
-#property description Sort of like rainbow but for lightness, avoiding the edges
+#property description Cycle through lightness values to create ripples in shaded areas
 #property frequency 0.5
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

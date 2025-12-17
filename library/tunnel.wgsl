@@ -1,6 +1,7 @@
 #property description 3D tunnel
-//#property author https://www.shadertoy.com/view/4sXSzs
 #property frequency 1
+
+// Original author: https://www.shadertoy.com/view/4sXSzs
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
 	let q = (uv - vec2<f32>(0.5, 0.5)) * aspectCorrection;

@@ -1,4 +1,4 @@
-#property description Shift the color in HSV space
+#property description Shift the hue of every pixel
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let fragColor = textureSample(iInputsTex[0], iSampler,  uv);

@@ -1,4 +1,4 @@
-#property description Solid rainbow colors
+#property description Generate a solid color
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let h = clamp((iIntensity - 0.25) / 0.9, 0.0, 1.0);

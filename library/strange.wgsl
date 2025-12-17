@@ -1,4 +1,4 @@
-#property description Strange tentacles
+#property description Strange dark tentacle pattern
 #property frequency 1
 
 fn main(uv: vec2<f32>) -> vec4<f32> {

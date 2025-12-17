@@ -1,4 +1,4 @@
-#property description Use UV (from YUV) as .uv
+#property description uvmap, but use U & V (from YUV) instead of red & green as the coordinate
 
 #property inputCount 2
 fn main(uv: vec2<f32>) -> vec4<f32> {

@@ -1,4 +1,4 @@
-#property description Apply gaussian resampling ( at pixel aligned points )
+#property description Apply gaussian blur (resolution-dependent)
 
 fn squared(x: f32) -> f32 { return x * x; }
 

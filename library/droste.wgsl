@@ -1,6 +1,7 @@
-//#property description Droste effect (spiral forever!)
-//#property author http://roy.red/droste-.html + zbanks
+#property description Droste effect (spiral fractal)
 #property frequency 1
+
+// Author: http://roy.red/droste-.html + zbanks
 
 // Complex functions from http://glslsandbox.com/e#5664.1
 

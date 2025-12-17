@@ -1,4 +1,4 @@
-#property description First order (expontential) hold to the beat, but diode
+#property description First order (expontential) hold to the beat, but allow brighter colors through immediately
 
 fn main(uv: vec2<f32>) -> vec4<f32> {
     let prev = textureSampleLevel(iChannelsTex[0], iSampler,  uv, 0.);

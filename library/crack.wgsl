@@ -1,4 +1,4 @@
-#property description And the cracks begin to show
+#property description Cracked glass effect
 #property frequency 0.5
 
 const MAX_CRACKS: i32 = 15;
