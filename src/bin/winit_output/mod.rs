@@ -654,13 +654,13 @@ impl WinitOutput<'_> {
                     .unwrap_or(false)
             });
             if let Some(monitor) = mh {
-                #[cfg(target_os = "linux")]
+                #[cfg(not(target_os = "macos"))]
                 {
                     screen_output
                         .window
                         .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
                 }
-                #[cfg(not(target_os = "linux"))]
+                #[cfg(target_os = "macos")]
                 {
                     if let Some(video_mode) = monitor.video_modes().next() {
                         screen_output
