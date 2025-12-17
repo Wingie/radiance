@@ -174,7 +174,12 @@ impl MovieNodeState {
         {
             name.clone()
         } else {
-            ctx.library_path(name).to_string_lossy().to_string()
+            // MPV always uses unix separators, even on Windows
+            ctx.library_path(name)
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/")
         };
 
         let conf_file_path = ctx
@@ -304,18 +309,6 @@ impl MovieNodeState {
                         {
                             let opt = ffi::CString::new("use-filedir-conf").unwrap();
                             let val = ffi::CString::new("yes").unwrap();
-                            unsafe {
-                                libmpv_sys::mpv_set_option_string(
-                                    transmute_copy(&mpv_init),
-                                    opt.as_ptr(),
-                                    val.as_ptr(),
-                                );
-                            }
-                        }
-                        #[cfg(target_os = "macos")]
-                        {
-                            let opt = ffi::CString::new("macos-bundle-path").unwrap();
-                            let val = ffi::CString::new("/usr/local/bin,/usr/local/sbin,/opt/local/bin,/opt/local/sbin,/opt/homebrew/bin,/opt/homebrew/sbin").unwrap();
                             unsafe {
                                 libmpv_sys::mpv_set_option_string(
                                     transmute_copy(&mpv_init),

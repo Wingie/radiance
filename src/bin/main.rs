@@ -803,6 +803,12 @@ impl App<'_> {
                             self.left_panel_expanded = true;
                             self.library_newly_opened = true;
                         }
+                        if self.left_panel_expanded
+                            && ui.input(|i| i.key_pressed(egui::Key::Escape))
+                        {
+                            self.left_panel_expanded = false;
+                            self.library_newly_opened = false;
+                        }
 
                         if let Some(egui::InnerResponse {
                             inner: library_response,
@@ -847,9 +853,7 @@ impl App<'_> {
                     .clicked()
                 {
                     self.left_panel_expanded = !self.left_panel_expanded;
-                    if self.left_panel_expanded {
-                        self.library_newly_opened = true;
-                    }
+                    self.library_newly_opened = self.left_panel_expanded;
                 }
 
                 if modal_shown {

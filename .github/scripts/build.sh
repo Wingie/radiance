@@ -73,7 +73,7 @@ case "$OS" in
           \( -clone 0 -resize 32x32 \) \
           \( -clone 0 -resize 48x48 \) \
           \( -clone 0 -resize 256x256 \) \
-          -delete 0 -alpha off -colors 256 /tmp/radiance_icon.ico
+          -delete 0 -colors 256 /tmp/radiance_icon.ico
 
     cat <<EOF >/tmp/radiance_info.rc
 0 ICON "/tmp/radiance_icon.ico"
@@ -86,7 +86,7 @@ BEGIN
     BLOCK "040904E4"
     BEGIN
       VALUE "CompanyName", "Radiance"
-      VALUE "FileDescription", "Video art software designed for live performance"
+      VALUE "FileDescription", "Radiance"
       VALUE "FileVersion", "1.0"
       VALUE "InternalName", "radiance"
       VALUE "OriginalFilename", "radiance.exe"
