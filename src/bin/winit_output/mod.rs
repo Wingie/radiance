@@ -654,20 +654,9 @@ impl WinitOutput<'_> {
                     .unwrap_or(false)
             });
             if let Some(monitor) = mh {
-                #[cfg(not(target_os = "macos"))]
-                {
-                    screen_output
-                        .window
-                        .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
-                }
-                #[cfg(target_os = "macos")]
-                {
-                    if let Some(video_mode) = monitor.video_modes().next() {
-                        screen_output
-                            .window
-                            .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
-                    }
-                }
+                screen_output
+                    .window
+                    .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
             }
 
             // Paint
