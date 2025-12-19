@@ -73,10 +73,34 @@ jobs:
             x86_64-pc-windows-gnu)
               sudo apt-get install -y \
                 mingw-w64 \
-                mingw-w64-tools \
-                imagemagick
+                mingw-w64-tools
               ;;
           esac
+
+      - name: Install modern ImageMagick (Linux - Windows target)
+        if: runner.os == 'Linux' && matrix.target == 'x86_64-pc-windows-gnu'
+        run: |
+          # Install dependencies for building ImageMagick
+          sudo apt-get install -y \
+            build-essential \
+            wget \
+            libpng-dev \
+            libjpeg-dev \
+            libtiff-dev \
+            libwebp-dev
+
+          # Download and build ImageMagick 7
+          cd /tmp
+          wget https://imagemagick.org/archive/ImageMagick.tar.gz
+          tar xzf ImageMagick.tar.gz
+          cd ImageMagick-*
+          ./configure --prefix=/usr/local --with-modules --enable-shared
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig /usr/local/lib
+
+          # Verify installation
+          magick --version
 
       - name: Install build tools (macOS)
         if: runner.os == 'macOS'
