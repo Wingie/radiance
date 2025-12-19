@@ -521,7 +521,6 @@ impl App<'_> {
 
         // See if we can present (window is not occluded)
         // (on Windows, we can always draw, and in fact, this signal doesn't fire as it should)
-        // XXX double-check this!
         if !cfg!(windows) && !app_ui.can_draw {
             return did_vsync;
         }

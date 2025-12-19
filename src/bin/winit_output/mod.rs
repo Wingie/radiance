@@ -679,7 +679,8 @@ impl WinitOutput<'_> {
             queue.submit(iter::once(encoder.finish()));
 
             // See if we can present (window is not occluded)
-            if !screen_output.can_draw {
+            // (on Windows, we can always draw, and in fact, this signal doesn't fire as it should)
+            if !cfg!(windows) && !screen_output.can_draw {
                 continue;
             }
             screen_output.can_draw = false;
@@ -807,7 +808,8 @@ impl WinitOutput<'_> {
                 );
 
                 // See if we can present (window is not occluded)
-                if !single_output.can_draw {
+                // (on Windows, we can always draw, and in fact, this signal doesn't fire as it should)
+                if !cfg!(windows) && !single_output.can_draw {
                     continue;
                 }
                 single_output.can_draw = false;
