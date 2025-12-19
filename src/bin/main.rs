@@ -520,8 +520,9 @@ impl App<'_> {
         };
 
         // See if we can present (window is not occluded)
-        // (on Windows, we can always draw, and in fact, this signal doesn't fire as it should)
-        if !cfg!(windows) && !app_ui.can_draw {
+        // (on Mac, we can always draw.) XXX test this
+        // (on Windows, we can always draw, and in fact, the redraw signal doesn't fire as it should.)
+        if cfg!(target_os = "linux") && !app_ui.can_draw {
             return did_vsync;
         }
         app_ui.can_draw = false;

@@ -176,7 +176,7 @@ impl MovieNodeState {
         } else {
             let path_str = ctx.library_path(name).to_string_lossy().to_string();
             // MPV always uses Unix separators, even on Windows
-            #[cfg(target_os = "windows")]
+            #[cfg(windows)]
             let path_str = path_str.replace('\\', "/");
             path_str
         };

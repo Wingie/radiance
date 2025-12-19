@@ -679,8 +679,9 @@ impl WinitOutput<'_> {
             queue.submit(iter::once(encoder.finish()));
 
             // See if we can present (window is not occluded)
-            // (on Windows, we can always draw, and in fact, this signal doesn't fire as it should)
-            if !cfg!(windows) && !screen_output.can_draw {
+            // (on Mac, we can always draw.) XXX test this
+            // (on Windows, we can always draw, and in fact, the redraw signal doesn't fire as it should.)
+            if cfg!(target_os = "linux") && !screen_output.can_draw {
                 continue;
             }
             screen_output.can_draw = false;
@@ -808,8 +809,9 @@ impl WinitOutput<'_> {
                 );
 
                 // See if we can present (window is not occluded)
-                // (on Windows, we can always draw, and in fact, this signal doesn't fire as it should)
-                if !cfg!(windows) && !single_output.can_draw {
+                // (on Mac, we can always draw.) XXX test this
+                // (on Windows, we can always draw, and in fact, the redraw signal doesn't fire as it should.)
+                if cfg!(target_os = "linux") && !single_output.can_draw {
                     continue;
                 }
                 single_output.can_draw = false;
