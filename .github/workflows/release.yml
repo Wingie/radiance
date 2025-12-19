@@ -77,7 +77,7 @@ jobs:
               ;;
           esac
 
-      - name: Install modern ImageMagick (Linux - Windows target)
+      - name: Install ImageMagick from source (for Windows icon)
         if: runner.os == 'Linux' && matrix.target == 'x86_64-pc-windows-gnu'
         run: |
           # Install dependencies for building ImageMagick
@@ -87,18 +87,19 @@ jobs:
             libpng-dev \
             libjpeg-dev \
             libtiff-dev \
-            libwebp-dev
+            libwebp-dev \
+            libtool \
+            libltdl-dev
 
           # Download and build ImageMagick 7
           cd /tmp
-          wget https://imagemagick.org/archive/ImageMagick.tar.gz
-          tar xzf ImageMagick.tar.gz
+          wget https://imagemagick.org/archive/ImageMagick-7.1.2-11.tar.gz
+          tar xzf ImageMagick-*.tar.gz
           cd ImageMagick-*
           ./configure --prefix=/usr/local --with-modules --enable-shared
           make -j$(nproc)
           sudo make install
           sudo ldconfig /usr/local/lib
-
           # Verify installation
           magick --version
 
