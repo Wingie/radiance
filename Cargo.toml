@@ -1,7 +1,7 @@
 [package]
 name = "radiance"
 description = "Video art software designed for live performance"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Zach Banks <zjbanks@gmail.com>", "Eric Van Albert <eric@van.al>"]
 homepage = "https://radiance.video"
 repository = "https://github.com/zbanks/radiance"
